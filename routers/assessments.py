@@ -50,6 +50,9 @@ def create_template(payload: dict, db: Session = Depends(get_db), current_user=D
 @router.get('/templates')
 def list_templates(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """List all assessment templates."""
+    # Only HR or project managers may list templates
+    if current_user.role not in ('hr_admin', 'project_manager'):
+        raise HTTPException(status_code=403, detail='Unauthorized')
     # In production, query from AssessmentTemplate model
     # For now, return a stub list
     return {'templates': [], 'message': 'Implement AssessmentTemplate model in production'}
@@ -57,11 +60,15 @@ def list_templates(db: Session = Depends(get_db), current_user=Depends(get_curre
 @router.get('/templates/{template_id}')
 def get_template(template_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Retrieve a specific assessment template."""
+    if current_user.role not in ('hr_admin', 'project_manager'):
+        raise HTTPException(status_code=403, detail='Unauthorized')
     return {'template': None, 'message': f'Assessment template {template_id} (stub)'}
 
 @router.post('/templates/{template_id}/apply')
 def apply_template_to_application(template_id: int, payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Apply an assessment template to an application."""
+    if current_user.role not in ('hr_admin', 'project_manager'):
+        raise HTTPException(status_code=403, detail='Unauthorized')
     app_id = payload.get('application_id')
     return {'status': 'template_applied', 'message': f'Assessment template {template_id} applied to application {app_id}'}
 
@@ -104,4 +111,7 @@ def get_assessment_results(assessment_id: int, db: Session = Depends(get_db), cu
     assessment = db.query(models.Assessment).filter(models.Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail='Assessment not found')
+    # Only HR and project managers can view assessment results
+    if current_user.role not in ('hr_admin', 'project_manager'):
+        raise HTTPException(status_code=403, detail='Unauthorized')
     return assessment

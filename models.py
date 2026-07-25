@@ -299,7 +299,7 @@ class EmployeeDocument(Base):
     uploaded_by = Column(Integer, ForeignKey("users.id"))
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    approval_status = Column(String, default="pending")  # pending, approved, rejected
+    approved = Column(Boolean, default=False)
     approved_at = Column(DateTime, nullable=True)
     expiry_date = Column(Date, nullable=True)
     is_expired = Column(Boolean, default=False)

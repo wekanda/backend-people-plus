@@ -80,7 +80,7 @@ async def upload_document(
         file_path=str(file_path),
         file_name=file.filename,
         uploaded_by=current_user.id,
-        approval_status="pending" if current_user.role == "staff" else "approved",
+        approved=current_user.role != "staff",
         approved_by=current_user.id if current_user.role != "staff" else None,
         approved_at=datetime.utcnow() if current_user.role != "staff" else None
     )
@@ -142,7 +142,7 @@ async def approve_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    doc.approval_status = "approved"
+    doc.approved = True
     doc.approved_by = current_user.id
     doc.approved_at = datetime.utcnow()
     db.add(doc)
@@ -194,7 +194,7 @@ async def get_personnel_file(
     ).all()
     
     # Calculate completeness
-    approved_count = sum(1 for d in documents if d.approval_status == "approved")
+    approved_count = sum(1 for d in documents if d.approved)
     completeness = (approved_count / len(required_docs) * 100) if required_docs else 0
     
     pfile.completeness_percentage = completeness
@@ -223,7 +223,7 @@ def update_personnel_file_completeness(employee_id: int, db: Session):
     # Count approved documents
     approved_docs = db.query(models.EmployeeDocument).filter(
         models.EmployeeDocument.employee_id == employee_id,
-        models.EmployeeDocument.approval_status == "approved"
+        models.EmployeeDocument.approved == True
     ).count()
     
     # Count required documents
@@ -248,7 +248,7 @@ def update_personnel_file_completeness(employee_id: int, db: Session):
         ~models.DocumentType.id.in_(
             db.query(models.EmployeeDocument.document_type_id).filter(
                 models.EmployeeDocument.employee_id == employee_id,
-                models.EmployeeDocument.approval_status == "approved"
+                models.EmployeeDocument.approved == True
             )
         )
     ).all()

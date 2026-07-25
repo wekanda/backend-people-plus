@@ -467,6 +467,12 @@ def ensure_schema_columns():
                     conn.execute(text('ALTER TABLE employees ADD COLUMN location VARCHAR'))
                 if 'photo_url' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN photo_url VARCHAR'))
+
+                result = conn.execute(text("PRAGMA table_info(employee_documents)"))
+                doc_columns = [row[1] for row in result]
+                if 'approved' not in doc_columns:
+                    conn.execute(text('ALTER TABLE employee_documents ADD COLUMN approved BOOLEAN DEFAULT 0'))
+                    conn.execute(text("UPDATE employee_documents SET approved = 1 WHERE approval_status = 'approved'"))
                 conn.commit()
         except Exception as e:
             print(f"SQLite schema check warning: {e}")

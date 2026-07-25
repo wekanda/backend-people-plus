@@ -12,6 +12,10 @@ router = APIRouter(prefix="/recruitment", tags=["recruitment"])
 
 @router.post("/jobs")
 def create_job(job: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Only HR admins and project managers can create job postings
+    if current_user.role not in ("hr_admin", "project_manager"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create jobs")
+
     j = models.JobPosting(
         title=job.get('title'),
         description=job.get('description'),
@@ -131,6 +135,10 @@ def update_application_status(app_id: int, payload: dict, db: Session = Depends(
     app = db.query(models.Application).filter(models.Application.id == app_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
+    # Only HR or managers can update application status
+    if current_user.role not in ("hr_admin", "project_manager"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to update application status")
+
     app.status = payload.get('status', app.status)
     app.reviewer_id = current_user.id
     db.add(app)

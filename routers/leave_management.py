@@ -56,7 +56,7 @@ class LeaveRequestSchema(BaseModel):
 class LeaveRequestResponseSchema(BaseModel):
     id: int
     employee_id: int
-    leave_type_id: int
+    leave_type_id: Optional[int] = None
     start_date: date
     end_date: date
     days: float

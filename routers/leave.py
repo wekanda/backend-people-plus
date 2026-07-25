@@ -20,6 +20,10 @@ class LeaveRequestResponse(schemas.LeaveRequestCreate):
 
 @router.post("/request", response_model=LeaveRequestResponse)
 def create_leave_request(request: schemas.LeaveRequestCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Staff may only request leave for themselves; HR/managers can create on behalf of others
+    if current_user.role == "staff" and request.employee_id != current_user.employee_id:
+        raise HTTPException(status_code=403, detail="Staff can only request leave for themselves")
+
     if request.end_date < request.start_date:
         raise HTTPException(status_code=400, detail="End date must be the same or after start date")
     delta = (request.end_date - request.start_date).days + 1
@@ -38,7 +42,10 @@ def create_leave_request(request: schemas.LeaveRequestCreate, db: Session = Depe
     return new_request
 
 @router.get("/balance/{employee_id}")
-def get_leave_balance(employee_id: int, db: Session = Depends(get_db)):
+def get_leave_balance(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Staff can only view their own balance
+    if current_user.role == "staff" and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this balance")
     total_allowed = 21
     year = date.today().year
     approved_days = db.query(func.sum(models.LeaveRequest.days)).filter(
@@ -50,10 +57,18 @@ def get_leave_balance(employee_id: int, db: Session = Depends(get_db)):
     return {"total_allowed": total_allowed, "used": approved_days, "remaining": total_allowed - approved_days}
 
 @router.get("/requests", response_model=List[LeaveRequestResponse])
-def list_leave_requests(employee_id: int | None = None, db: Session = Depends(get_db)):
+def list_leave_requests(employee_id: int | None = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     query = db.query(models.LeaveRequest).order_by(models.LeaveRequest.submitted_at.desc())
     if employee_id:
+        # If requesting for a specific employee, ensure permission
+        if current_user.role == "staff" and current_user.employee_id != employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
         query = query.filter(models.LeaveRequest.employee_id == employee_id)
+    else:
+        # No employee_id provided: only HR/Managers can view all
+        if current_user.role not in ("hr_admin", "project_manager"):
+            # Return only current user's requests
+            query = query.filter(models.LeaveRequest.employee_id == current_user.employee_id)
     return query.all()
 
 @router.put("/approve/{request_id}")

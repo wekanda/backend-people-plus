@@ -10,6 +10,10 @@ router = APIRouter(prefix="/requisitions", tags=["requisitions"])
 
 @router.post("")
 def create_requisition(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Only HR admins and project managers may create requisitions
+    if current_user.role not in ("hr_admin", "project_manager"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to create requisitions")
+
     req = models.Requisition(
         title=payload.get('title'),
         department=payload.get('department'),

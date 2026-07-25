@@ -8,7 +8,7 @@ import requests
 import json
 from datetime import date, timedelta
 
-BASE_URL = "http://127.0.0.1:8001"
+BASE_URL = "http://127.0.0.1:8000"
 
 # Test users
 users = {

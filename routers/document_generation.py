@@ -401,6 +401,9 @@ def list_available_templates(current_user=Depends(get_current_user)):
 def list_document_files(current_user=Depends(get_current_user)):
     """List all files under the repository `documents` folder (docx/xlsx/pdf).
     Returns relative paths so the frontend can request downloads."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to list documents")
+
     base = _resolve_documents_base()
     files = []
     if base.exists():
@@ -419,6 +422,9 @@ def list_document_files(current_user=Depends(get_current_user)):
 @router.get("/files/download")
 def download_document_file(file_path: str, current_user=Depends(get_current_user)):
     """Download a file from the `documents` folder. Protects against path traversal."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to download documents")
+
     if not file_path:
         raise HTTPException(status_code=400, detail="file_path query parameter is required")
     base = _resolve_documents_base()
@@ -434,6 +440,9 @@ def download_document_file(file_path: str, current_user=Depends(get_current_user
 @router.get("/sent")
 def list_sent_documents(current_user=Depends(get_current_user)):
     """List all generated/sent documents from the sent_documents folder."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to list sent documents")
+
     base = _resolve_documents_base(subpath="sent_documents")
     files = []
     if base.exists():
@@ -452,6 +461,9 @@ def list_sent_documents(current_user=Depends(get_current_user)):
 @router.get("/sent/download")
 def download_sent_document(file_path: str, current_user=Depends(get_current_user)):
     """Download a sent/generated document from the sent_documents folder."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to download sent documents")
+
     if not file_path:
         raise HTTPException(status_code=400, detail="file_path query parameter is required")
     base = _resolve_documents_base(subpath="sent_documents")

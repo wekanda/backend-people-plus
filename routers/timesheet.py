@@ -89,6 +89,7 @@ def get_timesheet_summary(employee_id: int, db: Session = Depends(get_db), curre
             raise HTTPException(status_code=403, detail="Not authorized to view this summary")
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
+
     total_hours = db.query(func.sum(models.Timesheet.hours_worked)).filter(
         models.Timesheet.employee_id == employee_id,
         models.Timesheet.date >= date(year, 1, 1),

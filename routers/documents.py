@@ -4,7 +4,7 @@ from datetime import date
 from pydantic import BaseModel
 import models
 from database import get_db
-from auth import get_current_user
+from auth import get_current_user, check_employee_access
 from typing import List
 import os
 from pathlib import Path
@@ -27,7 +27,17 @@ class DocumentResponse(BaseModel):
 
 @router.post("/upload")
 async def upload_doc(employee_id: int, document_type: str, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    # Store file on disk under ./uploads/<employee_id>/
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if current_user.role == "staff" and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=403, detail="Staff can only upload documents for themselves")
+    if current_user.role == "project_manager" and not check_employee_access(current_user, employee_id, db):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to upload documents for this employee")
+    if current_user.role not in ("staff", "hr_admin", "project_manager"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions to upload documents")
+
     upload_root = Path("uploads")
     dest_dir = upload_root / str(employee_id)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -43,10 +53,15 @@ async def upload_doc(employee_id: int, document_type: str, file: UploadFile = Fi
     return {"message": f"Document {document_type} uploaded successfully", "path": str(dest_path)}
 
 @router.get("/employee/{employee_id}")
-def get_employee_documents(employee_id: int, db: Session = Depends(get_db)):
+def get_employee_documents(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    if current_user.role == "staff" and current_user.employee_id != employee_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    if current_user.role == "project_manager" and not check_employee_access(current_user, employee_id, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     missing_docs = []
     doc_fields = {
