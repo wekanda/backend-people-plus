@@ -8,6 +8,11 @@ from auth import get_current_user
 from typing import List
 from sqlalchemy import func
 
+def resolve_employee_id(current_user, db: Session):
+    if current_user.employee_id is not None:
+        return current_user.employee_id
+    employee = db.query(models.Employee).filter(models.Employee.personal_email == current_user.email).first()
+    return employee.id if employee else None
 router = APIRouter(prefix="/api/timesheet", tags=["timesheet"])
 
 class TimesheetCreate(BaseModel):
@@ -39,13 +44,19 @@ def get_all_timesheets(db: Session = Depends(get_db), current_user=Depends(get_c
     """Get all timesheets for HR admins/project managers, or current user's timesheets otherwise"""
     if current_user.role in ["hr_admin", "project_manager"]:
         return db.query(models.Timesheet).order_by(models.Timesheet.date.desc()).offset(skip).limit(limit).all()
-    elif current_user.employee_id:
-        return db.query(models.Timesheet).filter(models.Timesheet.employee_id == current_user.employee_id).order_by(models.Timesheet.date.desc()).offset(skip).limit(limit).all()
-    else:
-        raise HTTPException(status_code=403, detail="No employee record associated with this account")
+    employee_id = resolve_employee_id(current_user, db)
+    if employee_id is not None:
+        return db.query(models.Timesheet).filter(models.Timesheet.employee_id == employee_id).order_by(models.Timesheet.date.desc()).offset(skip).limit(limit).all()
+    raise HTTPException(status_code=403, detail="No employee record associated with this account")
 
 @router.post("/entry", response_model=TimesheetResponse)
 def add_entry(timesheet: TimesheetCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # Staff may only add entries for themselves
+    if current_user.role == "staff":
+        employee_id = resolve_employee_id(current_user, db)
+        if employee_id is None or employee_id != timesheet.employee_id:
+            raise HTTPException(status_code=403, detail="Staff can only submit their own timesheets")
+
     db_timesheet = models.Timesheet(**timesheet.dict())
     db.add(db_timesheet)
     db.commit()
@@ -53,12 +64,31 @@ def add_entry(timesheet: TimesheetCreate, db: Session = Depends(get_db), current
     return db_timesheet
 
 @router.get("/employee/{employee_id}", response_model=List[TimesheetResponse])
-def get_employee_timesheets(employee_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_employee_timesheets(employee_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    # HR and managers can view any employee; staff only their own
+    if current_user.role in ["hr_admin", "project_manager"]:
+        pass
+    elif current_user.role == "staff":
+        resolved_employee_id = resolve_employee_id(current_user, db)
+        if resolved_employee_id is None or resolved_employee_id != employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized to view other employee timesheets")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     return db.query(models.Timesheet).filter(models.Timesheet.employee_id == employee_id).order_by(models.Timesheet.date.desc()).offset(skip).limit(limit).all()
 
 @router.get("/summary/{employee_id}", response_model=TimesheetSummary)
-def get_timesheet_summary(employee_id: int, db: Session = Depends(get_db)):
+def get_timesheet_summary(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     year = date.today().year
+    # Restrict access: HR/manager or the employee themselves
+    if current_user.role in ["hr_admin", "project_manager"]:
+        pass
+    elif current_user.role == "staff":
+        resolved_employee_id = resolve_employee_id(current_user, db)
+        if resolved_employee_id is None or resolved_employee_id != employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this summary")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
     total_hours = db.query(func.sum(models.Timesheet.hours_worked)).filter(
         models.Timesheet.employee_id == employee_id,
         models.Timesheet.date >= date(year, 1, 1),
