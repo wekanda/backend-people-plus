@@ -97,14 +97,60 @@ class EmployeeResponse(BaseModel):
     class Config:
         from_attributes = True
 
-@router.get("/me", response_model=EmployeeResponse)
-def get_my_profile(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def resolve_or_create_employee_profile(current_user, db: Session):
     employee = None
     if current_user.employee_id is not None:
         employee = db.query(models.Employee).filter(models.Employee.id == current_user.employee_id).first()
-    if not employee:
+    if not employee and current_user.email:
         employee = db.query(models.Employee).filter(models.Employee.personal_email == current_user.email).first()
 
+    if not employee and current_user.full_name:
+        employee = db.query(models.Employee).filter(models.Employee.full_name == current_user.full_name).first()
+        if employee:
+            employee.personal_email = current_user.email
+            db.add(employee)
+            current_user.employee_id = employee.id
+            db.add(current_user)
+            db.commit()
+
+    if not employee:
+        file_code = f"AUTO-{current_user.id}"
+        suffix = 1
+        while db.query(models.Employee).filter(models.Employee.file_code == file_code).first():
+            suffix += 1
+            file_code = f"AUTO-{current_user.id}-{suffix}"
+
+        employee = models.Employee(
+            file_code=file_code,
+            full_name=current_user.full_name or current_user.email.split('@')[0],
+            project='Unknown',
+            status='Active',
+            position='Staff',
+            personal_email=current_user.email,
+            contact_number='',
+            location='',
+            locker='',
+            date_of_appointment=date.today(),
+            contract_start=date.today(),
+            contract_end=date.today(),
+            contract_review_date=date.today(),
+            probation_end=date.today(),
+            employment_type='Full-time',
+            notice_period='N/A',
+            photo_url=None,
+        )
+        db.add(employee)
+        db.flush()
+        current_user.employee_id = employee.id
+        db.add(current_user)
+        db.commit()
+        db.refresh(employee)
+
+    return employee
+
+@router.get("/me", response_model=EmployeeResponse)
+def get_my_profile(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    employee = resolve_or_create_employee_profile(current_user, db)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee profile not found")
     return employee
