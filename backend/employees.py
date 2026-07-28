@@ -176,7 +176,7 @@ def list_employees(skip: int = 0, limit: int = 100, status: str = None, project:
 
 
 
-@router.get("/{employee_id}", response_model=EmployeeResponse)
+@router.get("/{employee_id:int}", response_model=EmployeeResponse)
 
 def get_employee(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
 
@@ -218,7 +218,7 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db), cur
 
 
 
-@router.put("/{employee_id}", response_model=EmployeeResponse)
+@router.put("/{employee_id:int}", response_model=EmployeeResponse)
 
 @require_role("hr_admin")
 
@@ -242,7 +242,7 @@ def update_employee(employee_id: int, employee: EmployeeUpdate, db: Session = De
 
 
 
-@router.delete("/{employee_id}")
+@router.delete("/{employee_id:int}")
 
 @require_role("hr_admin")
 

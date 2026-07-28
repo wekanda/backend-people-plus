@@ -30,9 +30,12 @@ def test_payslips_return_for_user_with_matching_employee_name():
 
     db = SessionLocal()
     try:
+        import uuid
+        unique_code = f'EMP{uuid.uuid4().hex[:6].upper()}'
+        unique_name = f'Demo Staff {uuid.uuid4().hex[:4]}'
         employee = backend_models.Employee(
-            file_code='EMP999',
-            full_name='Demo Staff',
+            file_code=unique_code,
+            full_name=unique_name,
             project='Test Project',
             status='Active',
             position='Tester',
@@ -40,10 +43,11 @@ def test_payslips_return_for_user_with_matching_employee_name():
         db.add(employee)
         db.flush()
 
+        unique_email = f'demo.staff2+{uuid.uuid4().hex[:8]}@example.com'
         user = backend_models.User(
-            email='demo.staff@example.com',
+            email=unique_email,
             hashed_password=get_password_hash('demo123'),
-            full_name='Demo Staff',
+            full_name=unique_name,
             role='staff',
             employee_id=None,
         )

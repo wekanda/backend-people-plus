@@ -184,7 +184,7 @@ def list_employees(skip: int = 0, limit: int = 100, status: str = None, project:
         query = query.filter(models.Employee.project == project)
     return query.offset(skip).limit(limit).all()
 
-@router.get("/{employee_id}", response_model=EmployeeResponse)
+@router.get("/{employee_id:int}", response_model=EmployeeResponse)
 def get_employee(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     if not check_employee_access(current_user, employee_id, db):
         raise HTTPException(status_code=403, detail="Access denied")
@@ -205,7 +205,7 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db), cur
     db.refresh(db_employee)
     return db_employee
 
-@router.put("/{employee_id}", response_model=EmployeeResponse)
+@router.put("/{employee_id:int}", response_model=EmployeeResponse)
 def update_employee(employee_id: int, employee: EmployeeUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     db_employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not db_employee:
@@ -219,7 +219,7 @@ def update_employee(employee_id: int, employee: EmployeeUpdate, db: Session = De
     db.refresh(db_employee)
     return db_employee
 
-@router.post("/{employee_id}/photo")
+@router.post("/{employee_id:int}/photo")
 async def upload_employee_photo(employee_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     if not check_employee_access(current_user, employee_id, db):
         raise HTTPException(status_code=403, detail="Access denied")
@@ -241,7 +241,7 @@ async def upload_employee_photo(employee_id: int, file: UploadFile = File(...), 
     db.refresh(employee)
     return {"message": "Profile photo uploaded", "photo_url": employee.photo_url}
 
-@router.delete("/{employee_id}")
+@router.delete("/{employee_id:int}")
 @require_role("hr_admin")
 def delete_employee(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     db_employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
