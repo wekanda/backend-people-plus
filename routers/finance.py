@@ -9,10 +9,37 @@ from datetime import datetime
 router = APIRouter(prefix="/finance", tags=["finance"])
 
 
+def _resolve_employee_id(current_user, db: Session):
+    if current_user.employee_id:
+        return current_user.employee_id
+
+    if current_user.full_name:
+        match = (
+            db.query(models.Employee)
+            .filter(func.lower(models.Employee.full_name) == current_user.full_name.lower())
+            .first()
+        )
+        if match:
+            return match.id
+
+    if current_user.email:
+        local_part = current_user.email.split('@', 1)[0].replace('.', ' ').replace('_', ' ')
+        tokens = [token for token in local_part.lower().split() if token]
+        if tokens:
+            query = db.query(models.Employee)
+            for token in tokens:
+                query = query.filter(func.lower(models.Employee.full_name).contains(token))
+            match = query.first()
+            if match:
+                return match.id
+
+    return None
+
+
 @router.post("/payslips/generate")
 def generate_payslip(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # basic permission check
-    if current_user.role not in ("hr_admin", "project_manager", "pay"):
+    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     employee_id = payload.get('employee_id')
@@ -44,22 +71,19 @@ def generate_payslip(payload: dict, db: Session = Depends(get_db), current_user=
 @router.get("/payslips")
 def list_payslips(employee_id: int = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     query = db.query(models.Payslip)
-    if employee_id:
-        query = query.filter(models.Payslip.employee_id == employee_id)
-    else:
-        # default to user's employee if available
-        if current_user.employee_id:
-            query = query.filter(models.Payslip.employee_id == current_user.employee_id)
-        else:
-            # only admin can list all
-            if current_user.role not in ("hr_admin",):
-                return []
-    return query.all()
+    resolved_employee_id = employee_id or _resolve_employee_id(current_user, db)
+
+    if resolved_employee_id:
+        query = query.filter(models.Payslip.employee_id == resolved_employee_id)
+    elif current_user.role not in ("hr_admin", "pay", "finance"):
+        return []
+
+    return query.order_by(models.Payslip.period_end.desc(), models.Payslip.id.desc()).all()
 
 
 @router.get('/reports/payslips_summary')
 def payslips_summary(start: str = None, end: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager", "pay"):
+    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     q = db.query(
@@ -86,7 +110,7 @@ def payslips_summary(start: str = None, end: str = None, db: Session = Depends(g
 
 @router.get('/reports/payslips_csv')
 def payslips_csv(start: str = None, end: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager", "pay"):
+    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     query = db.query(models.Payslip)

@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from backend.main import app
 import openpyxl
 import io
+from datetime import date
 
 client = TestClient(app)
 
@@ -20,6 +21,56 @@ def make_sample_excel():
 def test_payslip_upload_unauthenticated():
     res = client.post('/upload/payslips_excel', files={'file': ('payslips.xlsx', make_sample_excel(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')})
     assert res.status_code in (401, 403)
+
+
+def test_payslips_return_for_user_with_matching_employee_name():
+    from backend.main import models as backend_models
+    from backend.database import SessionLocal
+    from backend.auth import create_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        employee = backend_models.Employee(
+            file_code='EMP999',
+            full_name='Demo Staff',
+            project='Test Project',
+            status='Active',
+            position='Tester',
+        )
+        db.add(employee)
+        db.flush()
+
+        user = backend_models.User(
+            email='demo.staff@example.com',
+            hashed_password=get_password_hash('demo123'),
+            full_name='Demo Staff',
+            role='staff',
+            employee_id=None,
+        )
+        db.add(user)
+        db.flush()
+
+        db.add(backend_models.Payslip(
+            employee_id=employee.id,
+            period_start=date(2024, 1, 1),
+            period_end=date(2024, 1, 31),
+            gross_pay=1500.0,
+            tax=200.0,
+            deductions=50.0,
+            net_pay=1250.0,
+            generated_by=user.id,
+        ))
+        db.commit()
+
+        token = create_access_token({'sub': user.id})
+        res = client.get('/finance/payslips', headers={'Authorization': f'Bearer {token}'})
+
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        assert data[0]['employee_id'] == employee.id
+    finally:
+        db.close()
 
 
 # Note: authenticated test requires token; manual integration test recommended
