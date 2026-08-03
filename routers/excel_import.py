@@ -5,6 +5,7 @@ Handles bulk employee imports from Excel and CSV files.
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from datetime import datetime, date
+from pathlib import Path
 from database import get_db
 from auth import get_current_user
 import models
@@ -174,6 +175,138 @@ async def import_employees_from_file(
     except Exception as e:
         logger.error(f"Error importing file: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Error importing file: {str(e)}")
+
+
+@router.post("/import-folder")
+async def import_employees_from_workspace_folder(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Import all Excel files from the workspace excel folder into the database."""
+    if current_user.role != "hr_admin":
+        raise HTTPException(status_code=403, detail="Only HR Admins can import employees")
+
+    workspace_root = Path(__file__).resolve().parent.parent
+    excel_dir = workspace_root / "excel"
+    excel_dir.mkdir(parents=True, exist_ok=True)
+
+    import_results = []
+    errors = []
+    processed_files = []
+
+    for path in sorted(excel_dir.iterdir()):
+        if not path.is_file() or path.suffix.lower() not in {".xlsx", ".xls", ".csv"}:
+            continue
+        try:
+            if path.suffix.lower() == ".csv":
+                text = path.read_text(encoding="utf-8", errors="ignore")
+                csv_reader = csv.DictReader(StringIO(text))
+                if not csv_reader.fieldnames:
+                    raise HTTPException(status_code=400, detail=f"CSV file {path.name} has no headers")
+                headers = {header.lower().strip(): header for header in csv_reader.fieldnames}
+                rows = list(csv_reader)
+
+                def get_cell(row, key):
+                    if key not in headers:
+                        return None
+                    return row.get(headers[key])
+
+                required_fields = ["file_code", "full_name", "email", "position"]
+                for field in required_fields:
+                    if field not in headers:
+                        raise HTTPException(status_code=400, detail=f"Missing required column: {field}")
+
+                imported_count = 0
+                for row in rows:
+                    try:
+                        file_code = get_cell(row, "file_code")
+                        full_name = get_cell(row, "full_name")
+                        email = get_cell(row, "email")
+                        position = get_cell(row, "position")
+                        if not all([file_code, full_name, email, position]):
+                            continue
+                        existing = db.query(models.Employee).filter(models.Employee.file_code == str(file_code)).first()
+                        if existing:
+                            existing.full_name = full_name
+                            existing.position = position
+                            existing.contact_number = get_cell(row, "contact_number") or None
+                            existing.project = get_cell(row, "project") or None
+                            existing.location = get_cell(row, "location") or None
+                            existing.employment_type = get_cell(row, "employment_type") or "Contract"
+                            existing.status = "Active"
+                            db.add(existing)
+                        else:
+                            db.add(models.Employee(
+                                file_code=str(file_code),
+                                full_name=full_name,
+                                position=position,
+                                contact_number=get_cell(row, "contact_number") or None,
+                                project=get_cell(row, "project") or None,
+                                location=get_cell(row, "location") or None,
+                                employment_type=get_cell(row, "employment_type") or "Contract",
+                                status="Active"
+                            ))
+                        imported_count += 1
+                    except Exception as exc:
+                        errors.append(f"{path.name}: {exc}")
+                        logger.error("Error importing row from %s: %s", path.name, exc)
+                db.commit()
+                processed_files.append(path.name)
+                import_results.append({"file": path.name, "imported": imported_count, "sheets": ["Sheet1"]})
+                continue
+
+            workbook = openpyxl.load_workbook(path, data_only=True)
+            workbook_rows = list(workbook.worksheets)
+            imported_count = 0
+            for sheet in workbook_rows:
+                rows = list(sheet.iter_rows(min_row=2, values_only=False))
+                headers = {cell.value.lower().strip(): idx + 1 for idx, cell in enumerate(sheet[1]) if cell.value}
+                if not headers:
+                    continue
+                for row in rows:
+                    try:
+                        file_code = row[headers.get("file_code", [0])[0] - 1].value if "file_code" in headers else None
+                        full_name = row[headers.get("full_name", [0])[0] - 1].value if "full_name" in headers else None
+                        position = row[headers.get("position", [0])[0] - 1].value if "position" in headers else None
+                        if not all([file_code, full_name, position]):
+                            continue
+                        existing = db.query(models.Employee).filter(models.Employee.file_code == str(file_code)).first()
+                        if existing:
+                            existing.full_name = full_name
+                            existing.position = position
+                            existing.contact_number = row[headers.get("contact_number", [0])[0] - 1].value if "contact_number" in headers else None
+                            existing.project = row[headers.get("project", [0])[0] - 1].value if "project" in headers else None
+                            existing.location = row[headers.get("location", [0])[0] - 1].value if "location" in headers else None
+                            existing.status = "Active"
+                            db.add(existing)
+                        else:
+                            db.add(models.Employee(
+                                file_code=str(file_code),
+                                full_name=full_name,
+                                position=position,
+                                contact_number=row[headers.get("contact_number", [0])[0] - 1].value if "contact_number" in headers else None,
+                                project=row[headers.get("project", [0])[0] - 1].value if "project" in headers else None,
+                                location=row[headers.get("location", [0])[0] - 1].value if "location" in headers else None,
+                                status="Active"
+                            ))
+                        imported_count += 1
+                    except Exception as exc:
+                        errors.append(f"{path.name}: {exc}")
+                        logger.error("Error importing workbook row from %s: %s", path.name, exc)
+            db.commit()
+            processed_files.append(path.name)
+            import_results.append({"file": path.name, "imported": imported_count, "sheets": [sheet.title for sheet in workbook.worksheets]})
+        except Exception as exc:
+            errors.append(f"{path.name}: {exc}")
+            logger.error("Error importing workbook %s: %s", path.name, exc)
+
+    return {
+        "success": True,
+        "message": f"Imported data from {len(import_results)} workbook(s)",
+        "files": processed_files,
+        "results": import_results,
+        "errors": errors,
+    }
 
 
 @router.get("/employee-template")

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from pathlib import Path
 import shutil
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+WORD_DOCS_DIR = Path("uploads/word_documents")
+WORD_DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
 class DocumentCreate(BaseModel):
     employee_id: int
@@ -51,6 +54,79 @@ async def upload_doc(employee_id: int, document_type: str, file: UploadFile = Fi
 
     # Optionally record audit or link into Employee record (not implemented here)
     return {"message": f"Document {document_type} uploaded successfully", "path": str(dest_path)}
+
+
+@router.post("/word-documents/bulk-upload")
+async def bulk_upload_word_documents(files: List[UploadFile] = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to upload Word documents")
+
+    if not files:
+        raise HTTPException(status_code=400, detail="No Word documents were provided")
+
+    uploaded = []
+    for file in files:
+        filename = Path(file.filename or "").name
+        if not filename.lower().endswith((".doc", ".docx")):
+            continue
+
+        target = WORD_DOCS_DIR / filename
+        with target.open("wb") as out_file:
+            shutil.copyfileobj(file.file, out_file)
+
+        db.add(models.Notification(
+            user_id=current_user.id,
+            message=f"Word document '{filename}' was uploaded to the department word-document repository.",
+            type="word_document_upload",
+            read=False,
+        ))
+        uploaded.append({"name": filename, "path": str(target)})
+
+    db.commit()
+    return {"success": True, "uploaded": uploaded, "message": f"Uploaded {len(uploaded)} Word document(s)"}
+
+
+@router.get("/word-documents")
+def list_word_documents(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to list Word documents")
+
+    documents = []
+    for path in sorted(WORD_DOCS_DIR.iterdir()):
+        if path.is_file() and path.suffix.lower() in {".doc", ".docx"}:
+            documents.append({"name": path.name, "path": str(path)})
+    return {"documents": documents}
+
+
+@router.get("/word-documents/download")
+def download_word_document(file_name: str, current_user=Depends(get_current_user)):
+    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to download Word documents")
+
+    target = WORD_DOCS_DIR / file_name
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="Document not found")
+    return FileResponse(target, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=target.name)
+
+
+@router.post("/word-documents/send")
+def send_word_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+        raise HTTPException(status_code=403, detail="Insufficient permissions to send Word documents")
+
+    document_name = payload.get("document_name") or "Unknown document"
+    department = payload.get("department") or "general"
+
+    db.add(models.Notification(
+        user_id=current_user.id,
+        message=f"Word document '{document_name}' has been sent to the {department} department for review.",
+        type="word_document_sent",
+        read=False,
+    ))
+    db.commit()
+
+    return {"success": True, "sent_to": department, "document_name": document_name, "message": f"Document sent to {department}"}
+
 
 @router.get("/employee/{employee_id}")
 def get_employee_documents(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

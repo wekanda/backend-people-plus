@@ -501,8 +501,29 @@ try:
 except Exception as e:
     print(f"Schema initialization warning: {e}")
 
+def get_allowed_origins() -> list[str]:
+    configured_origins = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "https://frontend-people-plus.vercel.app",
+        "https://backend-people-plus.onrender.com",
+    ]
+    for origin in default_origins:
+        if origin not in configured_origins:
+            configured_origins.append(origin)
+    return configured_origins
+
+
 app = FastAPI(title="PEOPLE PLUSE API")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(employees.router)
