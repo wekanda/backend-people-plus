@@ -2,6 +2,8 @@ from fastapi.testclient import TestClient
 from backend.main import app
 import openpyxl
 import io
+import uuid
+from pathlib import Path
 from datetime import date
 
 client = TestClient(app)
@@ -21,6 +23,41 @@ def make_sample_excel():
 def test_payslip_upload_unauthenticated():
     res = client.post('/upload/payslips_excel', files={'file': ('payslips.xlsx', make_sample_excel(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')})
     assert res.status_code in (401, 403)
+
+
+def test_form_style_payslip_template_is_reported_clearly():
+    from backend.main import models as backend_models
+    from backend.database import SessionLocal
+    from backend.auth import create_access_token, get_password_hash
+
+    db = SessionLocal()
+    try:
+        unique_email = f'demo.hr+{uuid.uuid4().hex[:8]}@example.com'
+        user = backend_models.User(
+            email=unique_email,
+            hashed_password=get_password_hash('demo123'),
+            full_name='HR Admin Demo',
+            role='hr_admin',
+            employee_id=None,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token({'sub': user.id})
+        payload = Path('excel/PAYSLIP.xlsx').read_bytes()
+        res = client.post(
+            '/upload/payslips_excel',
+            files={'file': ('PAYSLIP.xlsx', payload, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')},
+            headers={'Authorization': f'Bearer {token}'},
+        )
+
+        assert res.status_code == 200
+        payload = res.json()
+        assert payload['imported'] == 0
+        assert 'form-style' in ' '.join(payload['errors']).lower()
+    finally:
+        db.close()
 
 
 def test_payslips_return_for_user_with_matching_employee_name():

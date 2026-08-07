@@ -620,6 +620,25 @@ def _find_payslip_header_row(sheet):
     return best_row_index, best_headers, best_score
 
 
+def _is_form_style_payslip_sheet(sheet):
+    text_blob = "\n".join(
+        str(cell or "").strip().lower()
+        for row in sheet.iter_rows(values_only=True)
+        for cell in row
+        if cell is not None and str(cell).strip()
+    )
+    form_markers = (
+        "staff monthly payslip",
+        "earnings",
+        "deductions",
+        "net pay",
+        "sign off",
+        "employer",
+        "employee",
+    )
+    return any(marker in text_blob for marker in form_markers)
+
+
 @router.post("/payslips_excel")
 
 async def upload_payslips_excel(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -648,10 +667,15 @@ async def upload_payslips_excel(file: UploadFile = File(...), db: Session = Depe
 
         for sheet in workbook.worksheets:
 
+            if _is_form_style_payslip_sheet(sheet):
+                errors.append(
+                    f"Sheet '{sheet.title}': form-style payslip template detected. This workbook is a payslip form layout, not a structured payslip table, so the row-by-row importer cannot safely import it."
+                )
+                continue
+
             header_row_index, headers, header_score = _find_payslip_header_row(sheet)
 
             if header_row_index is None or not headers or header_score < 3:
-
                 continue
 
 
