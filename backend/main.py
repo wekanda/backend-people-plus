@@ -492,6 +492,25 @@ def ensure_schema_columns():
                     conn.execute(text('ALTER TABLE employees ADD COLUMN location VARCHAR'))
                 if 'photo_url' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN photo_url VARCHAR'))
+                result = conn.execute(text("PRAGMA table_info(offers)"))
+                offer_columns = [row[1] for row in result]
+                if 'application_id' not in offer_columns:
+                    conn.execute(text('ALTER TABLE offers ADD COLUMN application_id INTEGER'))
+                if 'currency' not in offer_columns:
+                    conn.execute(text('ALTER TABLE offers ADD COLUMN currency VARCHAR DEFAULT "USD"'))
+                if 'terms' not in offer_columns:
+                    conn.execute(text('ALTER TABLE offers ADD COLUMN terms TEXT'))
+
+                result = conn.execute(text("PRAGMA table_info(interviews)"))
+                interview_columns = [row[1] for row in result]
+                if 'candidate_name' not in interview_columns:
+                    conn.execute(text('ALTER TABLE interviews ADD COLUMN candidate_name VARCHAR'))
+                if 'position' not in interview_columns:
+                    conn.execute(text('ALTER TABLE interviews ADD COLUMN position VARCHAR'))
+                if 'interviewer' not in interview_columns:
+                    conn.execute(text('ALTER TABLE interviews ADD COLUMN interviewer VARCHAR'))
+                if 'notes' not in interview_columns:
+                    conn.execute(text('ALTER TABLE interviews ADD COLUMN notes TEXT'))
                 conn.commit()
         except Exception as e:
             print(f"SQLite schema check warning: {e}")

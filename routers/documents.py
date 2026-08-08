@@ -28,7 +28,7 @@ class DocumentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-@router.post("/upload")
+@router.post("/legacy-upload")
 async def upload_doc(employee_id: int, document_type: str, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not employee:
@@ -128,7 +128,7 @@ def send_word_document(payload: dict, db: Session = Depends(get_db), current_use
     return {"success": True, "sent_to": department, "document_name": document_name, "message": f"Document sent to {department}"}
 
 
-@router.get("/employee/{employee_id}")
+@router.get("/employee-summary/{employee_id}")
 def get_employee_documents(employee_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not employee:

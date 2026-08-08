@@ -56,7 +56,7 @@ def get_leave_balance(employee_id: int, db: Session = Depends(get_db), current_u
     ).scalar() or 0
     return {"total_allowed": total_allowed, "used": approved_days, "remaining": total_allowed - approved_days}
 
-@router.get("/requests", response_model=List[LeaveRequestResponse])
+@router.get("/requests")
 def list_leave_requests(employee_id: int | None = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     query = db.query(models.LeaveRequest).order_by(models.LeaveRequest.submitted_at.desc())
     if employee_id:
@@ -69,7 +69,23 @@ def list_leave_requests(employee_id: int | None = None, db: Session = Depends(ge
         if current_user.role not in ("hr_admin", "project_manager"):
             # Return only current user's requests
             query = query.filter(models.LeaveRequest.employee_id == current_user.employee_id)
-    return query.all()
+
+    requests = query.all()
+    return [
+        {
+            "id": leave.id,
+            "employee_id": leave.employee_id,
+            "start_date": leave.start_date.isoformat() if leave.start_date else None,
+            "end_date": leave.end_date.isoformat() if leave.end_date else None,
+            "days": leave.days,
+            "reason": leave.reason or "",
+            "type": leave.type or "",
+            "status": leave.status or "Pending",
+            "submitted_at": leave.submitted_at.isoformat() if leave.submitted_at else None,
+            "reviewed_by": leave.reviewed_by,
+        }
+        for leave in requests
+    ]
 
 @router.put("/approve/{request_id}")
 def approve_leave(request_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
