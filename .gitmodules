@@ -1,0 +1,7 @@
+[submodule "people-pluse-backend"]
+	path = people-pluse-backend
+	url = https://github.com/wekanda/backend-people-plus.git
+
+[submodule "people-pluse-frontend"]
+	path = people-pluse-frontend
+	url = https://github.com/wekanda/frontend-people-plus.git
