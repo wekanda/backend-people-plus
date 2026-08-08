@@ -3,6 +3,7 @@ Payroll Management Router
 Handles salary calculation, payroll generation, and payslip management
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 from database import get_db
@@ -11,6 +12,13 @@ import models
 from typing import List
 
 router = APIRouter(prefix="/api/payroll", tags=["payroll"])
+
+
+class PayrollGenerateRequest(BaseModel):
+    employee_id: int
+    pay_period_start: date
+    pay_period_end: date
+    basic_salary: float
 
 
 @router.get("/employee/{employee_id}")
@@ -36,16 +44,26 @@ async def get_employee_payroll(
 
 @router.post("/generate")
 async def generate_payroll(
-    employee_id: int,
-    pay_period_start: date,
-    pay_period_end: date,
-    basic_salary: float,
+    payload: PayrollGenerateRequest | None = None,
+    employee_id: int | None = None,
+    pay_period_start: date | None = None,
+    pay_period_end: date | None = None,
+    basic_salary: float | None = None,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate payroll for an employee for a specific period."""
     if current_user.role not in ["hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Only HR/Finance can generate payroll")
+
+    if payload is not None:
+        employee_id = payload.employee_id
+        pay_period_start = payload.pay_period_start
+        pay_period_end = payload.pay_period_end
+        basic_salary = payload.basic_salary
+
+    if employee_id is None or pay_period_start is None or pay_period_end is None or basic_salary is None:
+        raise HTTPException(status_code=422, detail="employee_id, pay_period_start, pay_period_end, and basic_salary are required")
     
     employee = db.query(models.Employee).get(employee_id)
     if not employee:
@@ -117,8 +135,21 @@ async def list_payroll(
         query = query.filter(models.Payroll.status == status)
     
     payrolls = query.order_by(models.Payroll.pay_period_end.desc()).all()
+
+    result = []
+    for payroll in payrolls:
+        employee = db.query(models.Employee).filter(models.Employee.id == payroll.employee_id).first()
+        payroll_data = {
+            **payroll.__dict__,
+            "employee": {
+                "id": employee.id if employee else None,
+                "full_name": employee.full_name if employee else None,
+                "file_code": employee.file_code if employee else None,
+            } if employee else None,
+        }
+        result.append(payroll_data)
     
-    return payrolls
+    return result
 
 
 @router.post("/{payroll_id}/approve")
