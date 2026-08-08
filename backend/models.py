@@ -15,57 +15,21 @@ class User(Base):
 class Employee(Base):
     __tablename__ = "employees"
     id = Column(Integer, primary_key=True, index=True)
-    
-    # ========== IDENTIFICATION & FILING ==========
     file_code = Column(String, unique=True, index=True)
-    project = Column(String)
-    status = Column(String)  # Active, Exited, Recess
-    
-    # ========== BASIC INFORMATION ==========
     full_name = Column(String)
-    date_of_birth = Column(Date, nullable=True)
-    gender = Column(String, nullable=True)
-    marital_status = Column(String, nullable=True)
-    nationality = Column(String, nullable=True)
-    
-    # ========== CONTACT INFORMATION ==========
-    contact_number = Column(String)
-    personal_email = Column(String, nullable=True)
-    address = Column(String, nullable=True)
-    city = Column(String, nullable=True)
-    country = Column(String, nullable=True)
-    
-    # ========== IDENTITY & LEGAL ==========
-    national_id_number = Column(String, nullable=True, unique=True)
-    passport_number = Column(String, nullable=True)
-    driving_permit_number = Column(String, nullable=True)
-    
-    # ========== EMERGENCY CONTACT ==========
-    emergency_contact_name = Column(String, nullable=True)
-    emergency_contact_phone = Column(String, nullable=True)
-    emergency_contact_relationship = Column(String, nullable=True)
-    
-    # ========== BANKING INFORMATION ==========
-    bank_name = Column(String, nullable=True)
-    bank_account_number = Column(String, nullable=True)
-    bank_account_holder_name = Column(String, nullable=True)
-    
-    # ========== PROFESSIONAL INFORMATION ==========
+    project = Column(String)
+    status = Column(String)
     position = Column(String)
-    education_level = Column(String, nullable=True)
+    contact_number = Column(String)
     location = Column(String)
-    locker = Column(String, nullable=True)
-    employment_type = Column(String)
-    notice_period = Column(String, nullable=True)
-    
-    # ========== EMPLOYMENT DATES ==========
+    locker = Column(String)
     date_of_appointment = Column(Date)
     contract_start = Column(Date)
     contract_end = Column(Date)
-    contract_review_date = Column(Date, nullable=True)
-    probation_end = Column(Date, nullable=True)
-    
-    # ========== DOCUMENT TRACKING (10 FLAGS) ==========
+    contract_review_date = Column(Date)
+    probation_end = Column(Date)
+    employment_type = Column(String)
+    notice_period = Column(String)
     missing_app_resume = Column(Boolean, default=False)
     missing_appointment_letter = Column(Boolean, default=False)
     missing_academic_docs = Column(Boolean, default=False)
@@ -75,17 +39,11 @@ class Employee(Base):
     missing_national_id = Column(Boolean, default=False)
     missing_policy_declaration = Column(Boolean, default=False)
     missing_end_of_contract_notice = Column(Boolean, default=False)
-    missing_medical_insurance_form = Column(Boolean, default=False)
-    
-    # ========== METADATA ==========
     photo_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")
     appraisals = relationship("PerformanceAppraisal", back_populates="employee")
-    generated_documents = relationship("GeneratedDocument", back_populates="employee")
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
@@ -250,11 +208,7 @@ class ApplicationStage(Base):
 class Interview(Base):
     __tablename__ = "interviews"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=True)
-    candidate_name = Column(String, nullable=True)
-    position = Column(String, nullable=True)
-    interviewer = Column(String, nullable=True)
-    notes = Column(Text, nullable=True)
+    application_id = Column(Integer, ForeignKey("applications.id"))
     scheduled_at = Column(DateTime)
     duration_minutes = Column(Integer, default=60)
     panel = Column(String, nullable=True)  # comma separated user ids
@@ -285,12 +239,9 @@ class Feedback(Base):
 class Offer(Base):
     __tablename__ = "offers"
     id = Column(Integer, primary_key=True, index=True)
-    applicant_id = Column(Integer, ForeignKey("applicants.id"), nullable=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=True)
-    position = Column(String, nullable=True)
+    applicant_id = Column(Integer, ForeignKey("applicants.id"))
+    position = Column(String)
     salary = Column(Float, nullable=True)
-    currency = Column(String, default="USD")
-    terms = Column(Text, nullable=True)
     start_date = Column(Date, nullable=True)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -446,60 +397,3 @@ class AuditLog(Base):
     object_id = Column(String)
     details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-# ==================== PHASE 1: DOCUMENT GENERATION ENGINE ====================
-
-class DocumentTemplate(Base):
-    """Define document templates with fields and formatting."""
-    __tablename__ = "document_templates"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)  # e.g., "Employment Contract", "Offer Letter"
-    description = Column(Text, nullable=True)
-    category = Column(String)  # contract, letter, form, payslip
-    template_type = Column(String)  # docx, pdf, html
-    content = Column(Text)  # JSON definition of template structure
-    fields_json = Column(Text)  # JSON array of field definitions
-    is_active = Column(Boolean, default=True)
-    created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    generated_documents = relationship("GeneratedDocument", back_populates="template")
-
-
-class GeneratedDocument(Base):
-    """Track documents generated from templates."""
-    __tablename__ = "generated_documents"
-    id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("document_templates.id"))
-    employee_id = Column(Integer, ForeignKey("employees.id"))
-    document_name = Column(String)
-    status = Column(String, default="draft")  # draft, generated, downloaded, sent
-    file_path = Column(String, nullable=True)
-    file_format = Column(String)  # pdf, docx, html
-    created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    generated_at = Column(DateTime, nullable=True)
-    downloaded_at = Column(DateTime, nullable=True)
-    sent_at = Column(DateTime, nullable=True)
-    sent_to = Column(String, nullable=True)  # email address
-    notes = Column(Text, nullable=True)
-    
-    template = relationship("DocumentTemplate", back_populates="generated_documents")
-    employee = relationship("Employee", back_populates="generated_documents")
-    field_values = relationship("DocumentFieldValue", back_populates="generated_document")
-
-
-class DocumentFieldValue(Base):
-    """Store values filled in for each field in generated documents."""
-    __tablename__ = "document_field_values"
-    id = Column(Integer, primary_key=True, index=True)
-    generated_document_id = Column(Integer, ForeignKey("generated_documents.id"))
-    field_name = Column(String)
-    field_value = Column(Text)  # Can be JSON for complex types
-    field_type = Column(String)  # text, date, number, select, checkbox
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    generated_document = relationship("GeneratedDocument", back_populates="field_values")

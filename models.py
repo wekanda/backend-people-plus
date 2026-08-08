@@ -44,7 +44,6 @@ class Employee(Base):
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")
     appraisals = relationship("PerformanceAppraisal", back_populates="employee")
-    generated_documents = relationship("GeneratedDocument", back_populates="employee")
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
@@ -92,49 +91,6 @@ class Notification(Base):
     type = Column(String)
     read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class DocumentTemplate(Base):
-    __tablename__ = "document_templates"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    description = Column(Text, nullable=True)
-    category = Column(String)
-    template_type = Column(String)
-    content = Column(Text)
-    fields_json = Column(Text)
-    is_active = Column(Boolean, default=True)
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    generated_documents = relationship("GeneratedDocument", back_populates="template")
-
-
-class GeneratedDocument(Base):
-    __tablename__ = "generated_documents"
-    id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("document_templates.id"))
-    employee_id = Column(Integer, ForeignKey("employees.id"))
-    document_name = Column(String)
-    file_path = Column(String, nullable=True)
-    file_format = Column(String, default="html")
-    content = Column(Text, nullable=True)
-    status = Column(String, default="draft")
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    template = relationship("DocumentTemplate", back_populates="generated_documents")
-    employee = relationship("Employee", back_populates="generated_documents")
-    field_values = relationship("DocumentFieldValue", back_populates="document", cascade="all, delete-orphan")
-
-
-class DocumentFieldValue(Base):
-    __tablename__ = "document_field_values"
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("generated_documents.id"))
-    field_name = Column(String)
-    field_value = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    document = relationship("GeneratedDocument", back_populates="field_values")
 
 
 class Requisition(Base):
@@ -253,10 +209,6 @@ class Interview(Base):
     __tablename__ = "interviews"
     id = Column(Integer, primary_key=True, index=True)
     application_id = Column(Integer, ForeignKey("applications.id"))
-    candidate_name = Column(String, nullable=True)
-    position = Column(String, nullable=True)
-    interviewer = Column(String, nullable=True)
-    notes = Column(Text, nullable=True)
     scheduled_at = Column(DateTime)
     duration_minutes = Column(Integer, default=60)
     panel = Column(String, nullable=True)  # comma separated user ids
@@ -287,12 +239,9 @@ class Feedback(Base):
 class Offer(Base):
     __tablename__ = "offers"
     id = Column(Integer, primary_key=True, index=True)
-    applicant_id = Column(Integer, ForeignKey("applicants.id"), nullable=True)
-    application_id = Column(Integer, ForeignKey("applications.id"), nullable=True)
-    position = Column(String, nullable=True)
+    applicant_id = Column(Integer, ForeignKey("applicants.id"))
+    position = Column(String)
     salary = Column(Float, nullable=True)
-    currency = Column(String, default="USD")
-    terms = Column(Text, nullable=True)
     start_date = Column(Date, nullable=True)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)

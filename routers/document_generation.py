@@ -1,28 +1,16 @@
-"""
-Document Generation Engine Router - Enhanced Phase 1 Implementation
-Handles both file-based templates and database-driven document generation.
-"""
-
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from database import get_db
+import models
+from auth import get_current_user
 from datetime import datetime
 from typing import Optional
 import json
 import os
 from pathlib import Path
-from jinja2 import Template
-import io
-
-from database import get_db
-from auth import get_current_user
-import models
-from models import User, Employee, DocumentTemplate, GeneratedDocument, DocumentFieldValue, Notification
+from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
-UPLOAD_DIR = Path("./uploads/generated_documents")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _resolve_documents_base(subpath: Optional[str] = None) -> Path:
@@ -71,38 +59,6 @@ def set_document_policies(payload: dict, current_user=Depends(get_current_user))
         return {"ok": True, "policies": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-def _build_document_context(payload: dict, employee=None, applicant=None) -> dict:
-    """Build a template context from the JSON payload, with DB lookup fallback.
-
-    The frontend posts the direct values it needs to render the appointment/offer
-    letter. They must be honored in preference to any employee/applicant lookup,
-    otherwise placeholder names and email fields are blanked out in generated HTML.
-    """
-    return {
-        "date": datetime.utcnow().strftime("%d %B %Y"),
-        "employee_name": payload.get("employee_name") or (employee.full_name if employee else applicant.applicant_name if applicant else ""),
-        "employee_email": payload.get("employee_email") or (employee.email if employee else applicant.email if applicant else ""),
-        "employee_address": payload.get("employee_address") or (getattr(employee, 'address', 'Not provided') if employee else ""),
-        "applicant_name": payload.get("applicant_name") or (applicant.applicant_name if applicant else ""),
-        "position": payload.get("position", "Position Title"),
-        "department": payload.get("department", "Department"),
-        "location": payload.get("location", "Not specified"),
-        "start_date": payload.get("start_date", "To be confirmed"),
-        "employment_type": payload.get("employment_type", "Full-time"),
-        "currency": payload.get("currency", "KES"),
-        "salary": payload.get("salary", "Confidential"),
-        "base_salary": payload.get("base_salary", "Confidential"),
-        "manager_name": payload.get("manager_name", "Your Manager"),
-        "employer_name": payload.get("employer_name", "HR Director"),
-        "benefits": payload.get("benefits", "As per company policy"),
-        "responsibilities": payload.get("responsibilities", "As defined by management"),
-        "acceptance_deadline": payload.get("acceptance_deadline", "Within 5 business days"),
-        "termination_date": payload.get("termination_date", "To be confirmed"),
-        "payout_date": payload.get("payout_date", "Within 30 days"),
-        "reason": payload.get("reason", "As per company notice"),
-        "benefits_info": payload.get("benefits_info", "As per final settlement"),
-    }
 
 # Document templates
 TEMPLATES = {
@@ -298,8 +254,31 @@ def generate_document(payload: dict, db: Session = Depends(get_db), current_user
     if applicant_id:
         applicant = db.query(models.Application).filter(models.Application.id == applicant_id).first()
     
-    # Build substitution context from the live payload/DB fallback contract.
-    context = _build_document_context(payload, employee=employee, applicant=applicant)
+    # Build substitution context
+    context = {
+        "date": datetime.utcnow().strftime("%d %B %Y"),
+        "employee_name": employee.full_name if employee else applicant.applicant_name if applicant else "",
+        "employee_email": employee.email if employee else applicant.email if applicant else "",
+        "employee_address": getattr(employee, 'address', 'Not provided') if employee else "",
+        "applicant_name": applicant.applicant_name if applicant else "",
+        "position": payload.get("position", "Position Title"),
+        "department": payload.get("department", "Department"),
+        "location": payload.get("location", "Not specified"),
+        "start_date": payload.get("start_date", "To be confirmed"),
+        "employment_type": payload.get("employment_type", "Full-time"),
+        "currency": payload.get("currency", "KES"),
+        "salary": payload.get("salary", "Confidential"),
+        "base_salary": payload.get("base_salary", "Confidential"),
+        "manager_name": payload.get("manager_name", "Your Manager"),
+        "employer_name": payload.get("employer_name", "HR Director"),
+        "benefits": payload.get("benefits", "As per company policy"),
+        "responsibilities": payload.get("responsibilities", "As defined by management"),
+        "acceptance_deadline": payload.get("acceptance_deadline", "Within 5 business days"),
+        "termination_date": payload.get("termination_date", "To be confirmed"),
+        "payout_date": payload.get("payout_date", "Within 30 days"),
+        "reason": payload.get("reason", "As per company notice"),
+        "benefits_info": payload.get("benefits_info", "As per final settlement"),
+    }
     
     # Generate document by substituting placeholders
     try:
@@ -349,7 +328,30 @@ def send_document(payload: dict, db: Session = Depends(get_db), current_user=Dep
     if applicant_id:
         applicant = db.query(models.Application).filter(models.Application.id == applicant_id).first()
 
-    context = _build_document_context(payload, employee=employee, applicant=applicant)
+    context = {
+        "date": datetime.utcnow().strftime("%d %B %Y"),
+        "employee_name": employee.full_name if employee else applicant.applicant_name if applicant else "",
+        "employee_email": employee.email if employee else applicant.email if applicant else "",
+        "employee_address": getattr(employee, 'address', 'Not provided') if employee else "",
+        "applicant_name": applicant.applicant_name if applicant else "",
+        "position": payload.get("position", "Position Title"),
+        "department": payload.get("department", "Department"),
+        "location": payload.get("location", "Not specified"),
+        "start_date": payload.get("start_date", "To be confirmed"),
+        "employment_type": payload.get("employment_type", "Full-time"),
+        "currency": payload.get("currency", "KES"),
+        "salary": payload.get("salary", "Confidential"),
+        "base_salary": payload.get("base_salary", "Confidential"),
+        "manager_name": payload.get("manager_name", "Your Manager"),
+        "employer_name": payload.get("employer_name", "HR Director"),
+        "benefits": payload.get("benefits", "As per company policy"),
+        "responsibilities": payload.get("responsibilities", "As defined by management"),
+        "acceptance_deadline": payload.get("acceptance_deadline", "Within 5 business days"),
+        "termination_date": payload.get("termination_date", "To be confirmed"),
+        "payout_date": payload.get("payout_date", "Within 30 days"),
+        "reason": payload.get("reason", "As per company notice"),
+        "benefits_info": payload.get("benefits_info", "As per final settlement"),
+    }
 
     try:
         html_content = template.format(**context)

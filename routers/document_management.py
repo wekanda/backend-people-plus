@@ -17,34 +17,6 @@ UPLOAD_DIR = Path("uploads/documents")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def serialize_employee_document(doc):
-    """Normalize API payloads to the lightweight contract the frontend UI consumes."""
-    doc_type = getattr(doc, "document_type", None)
-    return {
-        "id": doc.id,
-        "employee_id": doc.employee_id,
-        "document_type_id": doc.document_type_id,
-        "document_type": {
-            "id": doc_type.id,
-            "name": doc_type.name,
-            "category": doc_type.category,
-            "is_required": doc_type.is_required,
-            "expiry_period_days": doc_type.expiry_period_days,
-        } if doc_type else None,
-        "file_name": doc.file_name,
-        "file_path": doc.file_path,
-        "uploaded_by": doc.uploaded_by,
-        "uploaded_at": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
-        "approved": bool(getattr(doc, "approved", False)),
-        "approved_by": doc.approved_by,
-        "approved_at": doc.approved_at.isoformat() if doc.approved_at else None,
-        "approval_status": "approved" if bool(getattr(doc, "approved", False)) else "pending",
-        "expiry_date": doc.expiry_date.isoformat() if doc.expiry_date else None,
-        "is_expired": bool(getattr(doc, "is_expired", False)),
-        "notes": doc.notes,
-    }
-
-
 @router.get("/types")
 async def get_document_types(db: Session = Depends(get_db)):
     """Get all document types required for personnel files."""
@@ -153,7 +125,7 @@ async def get_employee_documents(
         models.EmployeeDocument.employee_id == employee_id
     ).all()
     
-    return [serialize_employee_document(doc) for doc in documents]
+    return documents
 
 
 @router.post("/{doc_id}/approve")
@@ -216,8 +188,6 @@ async def get_personnel_file(
         models.EmployeeDocument.employee_id == employee_id
     ).all()
     
-    serialized_documents = [serialize_employee_document(doc) for doc in documents]
-
     # Get required documents
     required_docs = db.query(models.DocumentType).filter(
         models.DocumentType.is_required == True
@@ -232,7 +202,7 @@ async def get_personnel_file(
     
     return {
         "personnel_file": pfile,
-        "documents": serialized_documents,
+        "documents": documents,
         "required_documents": required_docs,
         "completeness_percentage": completeness,
         "approved_documents": approved_count,

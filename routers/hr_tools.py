@@ -121,26 +121,7 @@ def notify_candidate(payload: dict, db: Session = Depends(get_db), current_user=
 @router.post('/offer/generate')
 def generate_offer(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # payload: { application_id, salary, currency, terms }
-    application_id = payload.get('application_id')
-    if not application_id:
-        raise HTTPException(status_code=400, detail='application_id is required')
-    application = db.query(models.Application).filter(models.Application.id == application_id).first()
-    if not application:
-        raise HTTPException(status_code=404, detail='Application not found')
-    applicant_id = None
-    if application.email:
-        applicant = db.query(models.Applicant).filter(models.Applicant.email == application.email).first()
-        if applicant:
-            applicant_id = applicant.id
-    offer = models.Offer(
-        applicant_id=applicant_id,
-        application_id=application.id,
-        position=payload.get('position') or application.applicant_name,
-        salary=payload.get('salary'),
-        currency=payload.get('currency', 'USD'),
-        terms=payload.get('terms'),
-        status='pending'
-    )
+    offer = models.Offer(application_id=payload.get('application_id'), salary=payload.get('salary'), currency=payload.get('currency','USD'), terms=payload.get('terms'))
     db.add(offer); db.commit(); db.refresh(offer)
     return offer
 

@@ -97,23 +97,7 @@ def add_feedback(app_id: int, payload: dict, db: Session = Depends(get_db), curr
 
 @router.post('/applications/{app_id}/offer')
 def create_offer(app_id: int, payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    application = db.query(models.Application).filter(models.Application.id == app_id).first()
-    if not application:
-        raise HTTPException(status_code=404, detail='Application not found')
-    applicant_id = None
-    if application.email:
-        applicant = db.query(models.Applicant).filter(models.Applicant.email == application.email).first()
-        if applicant:
-            applicant_id = applicant.id
-    offer = models.Offer(
-        applicant_id=applicant_id,
-        application_id=app_id,
-        position=payload.get('position') or application.applicant_name,
-        salary=payload.get('salary'),
-        currency=payload.get('currency','USD'),
-        terms=payload.get('terms'),
-        status='pending'
-    )
+    offer = models.Offer(application_id=app_id, salary=payload.get('salary'), currency=payload.get('currency','USD'), terms=payload.get('terms'))
     db.add(offer)
     db.commit()
     db.refresh(offer)
