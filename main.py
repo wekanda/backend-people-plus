@@ -508,9 +508,10 @@ app.include_router(document_management.router)
 app.include_router(payroll.router)
 app.include_router(excel_import.router)
 
+@app.get("/health")
 @app.get("/api/health")
 def root():
-    return {"message": "PEOPLE PLUSE API running"}
+    return {"message": "PEOPLE PLUSE API running", "status": "ok"}
 
 @app.get("/api/debug/schema")
 def debug_schema(db: Session = Depends(get_db)):
