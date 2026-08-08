@@ -90,10 +90,10 @@ async def import_employees_from_file(
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format. Please upload .xlsx, .xls, or .csv")
 
-        required_fields = ["file_code", "full_name", "email", "position"]
-        for field in required_fields:
-            if field not in headers:
-                raise HTTPException(status_code=400, detail=f"Missing required column: {field}")
+        required_fields = ["file_code", "full_name"]
+        missing_required = [field for field in required_fields if field not in headers]
+        if missing_required:
+            raise HTTPException(status_code=400, detail=f"Missing required column: {', '.join(missing_required)}")
 
         imported_employees = []
         errors = []
@@ -107,9 +107,14 @@ async def import_employees_from_file(
                 email = get_cell(row, "email")
                 position = get_cell(row, "position")
 
-                if not all([file_code, full_name, email, position]):
+                if not file_code or not full_name:
                     errors.append(f"Row {row_idx}: Missing required fields")
                     continue
+
+                if not email:
+                    email = f"{str(file_code).replace(' ', '').lower()}@peoplepluse.local"
+                if not position:
+                    position = "Staff"
 
                 contact_number = get_cell(row, "contact_number") or None
                 project = get_cell(row, "project") or None
