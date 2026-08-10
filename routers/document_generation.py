@@ -321,7 +321,7 @@ def generate_document(payload: dict, db: Session = Depends(get_db), current_user
     return {
         "template_type": template_type,
         "content": html_content,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "generated_by": current_user.full_name
     }
 
@@ -358,7 +358,7 @@ def send_document(payload: dict, db: Session = Depends(get_db), current_user=Dep
 
     uploads_dir = Path(__file__).resolve().parents[2] / "uploads" / "sent_documents"
     uploads_dir.mkdir(parents=True, exist_ok=True)
-    send_file = uploads_dir / f"{template_type}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.html"
+    send_file = uploads_dir / f"{template_type}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.html"
     send_file.write_text(html_content, encoding="utf-8")
 
     log = models.AuditLog(

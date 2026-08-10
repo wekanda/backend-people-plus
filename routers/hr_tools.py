@@ -188,7 +188,7 @@ def create_offer_template(payload: dict, db: Session = Depends(get_db), current_
     # payload: { name, content_template }
     log = models.AuditLog(user_id=current_user.id, action='offer_template_created', object_type='offer_template', object_id=None, details=payload.get('name'))
     db.add(log); db.commit()
-    return {'template_id': 'template_' + str(int(datetime.utcnow().timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
+    return {'template_id': 'template_' + str(int(datetime.now(timezone.utc).timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
 
 
 @router.post('/offer/sign')
@@ -234,7 +234,7 @@ def get_consent_status(db: Session = Depends(get_db), current_user=Depends(get_c
 @router.post('/compliance/consent')
 def record_consent(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Record user consent for data processing, GDPR compliance
-    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.utcnow()}")
+    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.now(timezone.utc)}")
     db.add(log); db.commit()
     return {'status': 'consent_recorded', 'message': 'Compliance: User consent recorded'}
 
@@ -379,7 +379,7 @@ def create_onboarding_checklist(payload: dict, db: Session = Depends(get_db), cu
         candidate_name=payload.get('candidate_name', 'New Employee'),
         status='Active',
         items_json=items_json,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     
     db.add(checklist)
