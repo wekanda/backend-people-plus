@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from datetime import date
@@ -94,8 +94,7 @@ class EmployeeResponse(BaseModel):
     city: str | None = None
     country: str | None = None
     personal_email: str | None = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 def resolve_or_create_employee_profile(current_user, db: Session):
     employee = None

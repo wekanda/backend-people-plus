@@ -488,10 +488,89 @@ def ensure_schema_columns():
             with engine.connect() as conn:
                 result = conn.execute(text("PRAGMA table_info(employees)"))
                 columns = [row[1] for row in result]
+                if 'gender' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN gender VARCHAR'))
+                if 'marital_status' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN marital_status VARCHAR'))
+                if 'nationality' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN nationality VARCHAR'))
+                if 'contact_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN contact_number VARCHAR'))
+                if 'personal_email' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN personal_email VARCHAR'))
+                if 'address' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN address VARCHAR'))
+                if 'city' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN city VARCHAR'))
+                if 'country' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN country VARCHAR'))
+                if 'national_id_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN national_id_number VARCHAR'))
+                if 'passport_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN passport_number VARCHAR'))
+                if 'driving_permit_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN driving_permit_number VARCHAR'))
+                if 'emergency_contact_name' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN emergency_contact_name VARCHAR'))
+                if 'emergency_contact_phone' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN emergency_contact_phone VARCHAR'))
+                if 'emergency_contact_relationship' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN emergency_contact_relationship VARCHAR'))
+                if 'bank_name' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN bank_name VARCHAR'))
+                if 'bank_account_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN bank_account_number VARCHAR'))
+                if 'bank_account_holder_name' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN bank_account_holder_name VARCHAR'))
+                if 'position' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN position VARCHAR'))
+                if 'education_level' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN education_level VARCHAR'))
                 if 'location' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN location VARCHAR'))
+                if 'locker' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN locker VARCHAR'))
+                if 'employment_type' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN employment_type VARCHAR'))
+                if 'notice_period' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN notice_period VARCHAR'))
+                if 'date_of_appointment' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN date_of_appointment DATE'))
+                if 'contract_start' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN contract_start DATE'))
+                if 'contract_end' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN contract_end DATE'))
+                if 'contract_review_date' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN contract_review_date DATE'))
+                if 'probation_end' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN probation_end DATE'))
+                if 'missing_app_resume' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_app_resume BOOLEAN DEFAULT 0'))
+                if 'missing_appointment_letter' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_appointment_letter BOOLEAN DEFAULT 0'))
+                if 'missing_academic_docs' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_academic_docs BOOLEAN DEFAULT 0'))
+                if 'missing_recruitment_notes' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_recruitment_notes BOOLEAN DEFAULT 0'))
+                if 'missing_staff_id_form' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_staff_id_form BOOLEAN DEFAULT 0'))
+                if 'missing_performance_appraisals' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_performance_appraisals BOOLEAN DEFAULT 0'))
+                if 'missing_national_id' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_national_id BOOLEAN DEFAULT 0'))
+                if 'missing_policy_declaration' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_policy_declaration BOOLEAN DEFAULT 0'))
+                if 'missing_end_of_contract_notice' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_end_of_contract_notice BOOLEAN DEFAULT 0'))
+                if 'missing_medical_insurance_form' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_medical_insurance_form BOOLEAN DEFAULT 0'))
                 if 'photo_url' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN photo_url VARCHAR'))
+                if 'created_at' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN created_at DATETIME'))
+                if 'updated_at' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN updated_at DATETIME'))
+
                 result = conn.execute(text("PRAGMA table_info(offers)"))
                 offer_columns = [row[1] for row in result]
                 if 'application_id' not in offer_columns:

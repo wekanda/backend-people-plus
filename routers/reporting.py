@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/reporting", tags=["reporting"])
 
@@ -23,7 +23,7 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     emp_dates = db.query(models.Employee.date_of_appointment).filter(models.Employee.date_of_appointment != None).all()
     avg_tenure_days = 0
     if emp_dates:
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         tenures = [(today - e[0]).days for e in emp_dates if e[0]]
         avg_tenure_days = int(sum(tenures) / len(tenures)) if tenures else 0
 
@@ -36,7 +36,7 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     pending_leaves = db.query(models.LeaveRequest).filter(models.LeaveRequest.status == "Pending").count()
 
     # Turnover (employees hired - employees left in last year)
-    one_year_ago = datetime.utcnow().date() - timedelta(days=365)
+    one_year_ago = datetime.now(timezone.utc).date() - timedelta(days=365)
     hired = db.query(models.Employee).filter(models.Employee.date_of_appointment >= one_year_ago).count()
     left = db.query(models.Employee).filter(models.Employee.status == "Inactive").count()
     turnover_rate = (left / total_employees * 100) if total_employees > 0 else 0
@@ -234,5 +234,5 @@ def export_dashboard_summary(db: Session = Depends(get_db), current_user=Depends
             "mid_performers": 5,
             "low_performers": 2
         },
-        "export_timestamp": datetime.utcnow().isoformat()
+        "export_timestamp": datetime.now(timezone.utc).isoformat()
     }

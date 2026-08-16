@@ -5,7 +5,7 @@ per Ugandan labor standards
 
 from database import SessionLocal, engine
 import models
-from datetime import datetime
+from datetime import datetime, timezone
 
 def seed_leave_types():
     """Create standard leave types per Uganda Employment Act."""
@@ -251,7 +251,7 @@ def init_leave_balances():
                     balance=leave_type.annual_entitlement_days,
                     accrued=leave_type.annual_entitlement_days,
                     used=0,
-                    last_updated=datetime.utcnow()
+                    last_updated=datetime.now(timezone.utc)
                 )
                 db.add(balance)
     

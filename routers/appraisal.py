@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import models
 from database import get_db
 from auth import get_current_user, check_employee_access
@@ -26,8 +26,7 @@ class AppraisalResponse(BaseModel):
     challenges: str
     point_outs: str | None = None
     appraisal_date: date
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.post("/create", response_model=AppraisalResponse)
 def create_appraisal(appraisal: AppraisalCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

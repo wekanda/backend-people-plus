@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import models
 from database import get_db
 from auth import get_current_user
@@ -28,8 +28,7 @@ class TimesheetResponse(BaseModel):
     hours_worked: float
     overtime_hours: float
     approved: bool
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TimesheetSummary(BaseModel):
     employee_id: int

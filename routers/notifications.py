@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import models
 from database import get_db
 from auth import get_current_user
@@ -15,8 +15,7 @@ class NotificationResponse(BaseModel):
     type: str
     read: bool
     created_at: datetime
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/", response_model=List[NotificationResponse])
 def get_notifications(db: Session = Depends(get_db), current_user=Depends(get_current_user)):

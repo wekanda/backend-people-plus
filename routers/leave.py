@@ -7,6 +7,8 @@ from database import get_db
 from auth import get_current_user
 from typing import List
 
+from pydantic import ConfigDict
+
 router = APIRouter(prefix="/api/leave", tags=["leave"])
 
 class LeaveRequestResponse(schemas.LeaveRequestCreate):
@@ -15,8 +17,7 @@ class LeaveRequestResponse(schemas.LeaveRequestCreate):
     status: str
     submitted_at: datetime
     reviewed_by: int | None = None
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.post("/request", response_model=LeaveRequestResponse)
 def create_leave_request(request: schemas.LeaveRequestCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):

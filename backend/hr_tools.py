@@ -8,7 +8,7 @@ import models
 
 from auth import get_current_user
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from datetime import timedelta
 
@@ -329,9 +329,9 @@ def create_interview(payload: dict, db: Session = Depends(get_db), current_user=
         try:
             scheduled_at = datetime.fromisoformat(f"{date_value}T{time_value}") if time_value else datetime.fromisoformat(date_value)
         except Exception:
-            scheduled_at = datetime.utcnow()
+            scheduled_at = datetime.now(timezone.utc)
     else:
-        scheduled_at = datetime.utcnow()
+        scheduled_at = datetime.now(timezone.utc)
 
     interview = models.Interview(
         application_id=payload.get('application_id'),
@@ -431,7 +431,7 @@ def create_offer_template(payload: dict, db: Session = Depends(get_db), current_
 
     db.add(log); db.commit()
 
-    return {'template_id': 'template_' + str(int(datetime.utcnow().timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
+    return {'template_id': 'template_' + str(int(datetime.now(timezone.utc).timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
 
 
 
@@ -523,7 +523,7 @@ def record_consent(payload: dict, db: Session = Depends(get_db), current_user=De
 
     # Record user consent for data processing, GDPR compliance
 
-    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.utcnow()}")
+    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.now(timezone.utc)}")
 
     db.add(log); db.commit()
 
@@ -824,7 +824,7 @@ def create_onboarding_checklist(payload: dict, db: Session = Depends(get_db), cu
 
         items_json=items_json,
 
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
 
     )
 

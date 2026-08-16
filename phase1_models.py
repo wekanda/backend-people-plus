@@ -11,7 +11,7 @@ class LeaveType(Base):
     description = Column(String, nullable=True)
     is_paid = Column(Boolean, default=True)
     requires_manager_approval = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class LeaveBalance(Base):
@@ -23,7 +23,7 @@ class LeaveBalance(Base):
     balance = Column(Float, default=0.0)  # Days remaining
     accrued = Column(Float, default=0.0)  # Days earned this year
     used = Column(Float, default=0.0)  # Days used this year
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=utcnow)
     employee = relationship("Employee", backref="leave_balances")
     leave_type = relationship("LeaveType")
 
@@ -36,7 +36,7 @@ class DocumentType(Base):
     category = Column(String)  # personal, employment, qualification, medical, etc.
     is_required = Column(Boolean, default=True)  # Flag if document is mandatory
     expiry_period_days = Column(Integer, nullable=True)  # Days until expiry (None = never)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class EmployeeDocument(Base):
@@ -48,7 +48,7 @@ class EmployeeDocument(Base):
     file_path = Column(String)  # Relative path in uploads/
     file_name = Column(String)
     uploaded_by = Column(Integer, ForeignKey("users.id"))  # User who uploaded
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=utcnow)
     approved = Column(Boolean, default=False)  # P&C approval status
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)

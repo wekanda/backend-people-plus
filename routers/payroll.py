@@ -5,7 +5,7 @@ Handles salary calculation, payroll generation, and payslip management
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from database import get_db
 from auth import get_current_user
 import models
@@ -65,7 +65,7 @@ async def generate_payroll(
     if employee_id is None or pay_period_start is None or pay_period_end is None or basic_salary is None:
         raise HTTPException(status_code=422, detail="employee_id, pay_period_start, pay_period_end, and basic_salary are required")
     
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
@@ -162,13 +162,13 @@ async def approve_payroll(
     if current_user.role not in ["hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
-    payroll = db.query(models.Payroll).get(payroll_id)
+    payroll = db.get(models.Payroll, payroll_id)
     if not payroll:
         raise HTTPException(status_code=404, detail="Payroll not found")
     
     payroll.status = "approved"
     payroll.approved_by = current_user.id
-    payroll.approved_at = datetime.utcnow()
+    payroll.approved_at = datetime.now(timezone.utc)
     
     db.add(payroll)
     db.commit()
@@ -187,7 +187,7 @@ async def submit_payroll(
     if current_user.role not in ["hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
-    payroll = db.query(models.Payroll).get(payroll_id)
+    payroll = db.get(models.Payroll, payroll_id)
     if not payroll:
         raise HTTPException(status_code=404, detail="Payroll not found")
     
@@ -212,7 +212,7 @@ async def mark_payroll_paid(
     if current_user.role not in ["hr_admin", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
-    payroll = db.query(models.Payroll).get(payroll_id)
+    payroll = db.get(models.Payroll, payroll_id)
     if not payroll:
         raise HTTPException(status_code=404, detail="Payroll not found")
     

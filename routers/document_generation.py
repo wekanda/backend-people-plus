@@ -6,16 +6,19 @@ Handles both file-based templates and database-driven document generation.
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import json
+import html
 import os
 from pathlib import Path
 from jinja2 import Template
 import io
+import docx
 
 from database import get_db
 from auth import get_current_user
+from routers.hr_tools import send_email_if_configured
 import models
 from models import User, Employee, DocumentTemplate, GeneratedDocument, DocumentFieldValue, Notification
 
@@ -80,7 +83,7 @@ def _build_document_context(payload: dict, employee=None, applicant=None) -> dic
     otherwise placeholder names and email fields are blanked out in generated HTML.
     """
     return {
-        "date": datetime.utcnow().strftime("%d %B %Y"),
+        "date": datetime.now(timezone.utc).strftime("%d %B %Y"),
         "employee_name": payload.get("employee_name") or (employee.full_name if employee else applicant.applicant_name if applicant else ""),
         "employee_email": payload.get("employee_email") or (employee.email if employee else applicant.email if applicant else ""),
         "employee_address": payload.get("employee_address") or (getattr(employee, 'address', 'Not provided') if employee else ""),
@@ -321,24 +324,65 @@ def generate_document(payload: dict, db: Session = Depends(get_db), current_user
     return {
         "template_type": template_type,
         "content": html_content,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "generated_by": current_user.full_name
     }
 
 
-@router.post("/send")
-def send_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def _render_docx_from_text(text: str) -> io.BytesIO:
+    document = docx.Document()
+    for line in text.splitlines():
+        if line.strip() == "":
+            document.add_paragraph("")
+        else:
+            document.add_paragraph(line)
+    output = io.BytesIO()
+    document.save(output)
+    output.seek(0)
+    return output
+
+
+def _render_pdf_from_text(text: str) -> io.BytesIO:
+    try:
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail="PDF generation not available. Install reportlab: pip install reportlab"
+        )
+
+    output = io.BytesIO()
+    pdf = canvas.Canvas(output, pagesize=letter)
+    width, height = letter
+    margin = 40
+    y = height - margin
+    line_height = 14
+
+    for line in text.splitlines():
+        if y < margin + line_height:
+            pdf.showPage()
+            y = height - margin
+        pdf.drawString(margin, y, line)
+        y -= line_height
+
+    pdf.save()
+    output.seek(0)
+    return output
+
+
+@router.post("/generate-docx")
+def generate_document_docx(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Generate a Word document from template data."""
     if current_user.role not in ["hr_admin", "project_manager"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     template_type = payload.get("template_type", "").lower()
-    email = payload.get("email")
-    if not email:
-        raise HTTPException(status_code=400, detail="Recipient email is required")
     if template_type not in TEMPLATES:
         raise HTTPException(status_code=400, detail=f"Template not found. Available: {', '.join(TEMPLATES.keys())}")
 
     template = TEMPLATES[template_type]
+
     employee_id = payload.get("employee_id")
     applicant_id = payload.get("applicant_id")
 
@@ -356,24 +400,208 @@ def send_document(payload: dict, db: Session = Depends(get_db), current_user=Dep
     except KeyError as e:
         raise HTTPException(status_code=400, detail=f"Missing required field: {str(e)}")
 
-    uploads_dir = Path(__file__).resolve().parents[2] / "uploads" / "sent_documents"
+    docx_file = _render_docx_from_text(html_content)
+    filename = f"{template_type}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.docx"
+
+    log = models.AuditLog(
+        user_id=current_user.id,
+        action="document_generated",
+        object_type=template_type,
+        object_id=str(employee_id or applicant_id),
+        details=json.dumps(context)
+    )
+    db.add(log)
+    db.commit()
+
+    return StreamingResponse(
+        docx_file,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get('/template/leave-application')
+def download_leave_application_template(current_user=Depends(get_current_user)):
+    """Return a blank Excel Leave Application template file."""
+    repo_root = Path(__file__).resolve().parents[2]
+    template_path = repo_root / 'templates' / 'excel' / 'Leave_Application_template.xlsx'
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail='Template not found')
+    return FileResponse(str(template_path), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename='Leave_Application_template.xlsx')
+
+
+@router.post('/template/leave-application/fill')
+def fill_leave_application_template(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Fill and return the Leave Application template as an Excel file using payload values."""
+    try:
+        from openpyxl import load_workbook
+    except Exception:
+        raise HTTPException(status_code=500, detail='openpyxl is required to fill templates')
+
+    repo_root = Path(__file__).resolve().parents[2]
+    template_path = repo_root / 'templates' / 'excel' / 'Leave_Application_template.xlsx'
+    if not template_path.exists():
+        raise HTTPException(status_code=404, detail='Template not found')
+
+    wb = load_workbook(str(template_path))
+    ws = wb.active
+
+    # Map payload fields to cells (basic mapping)
+    mapping = {
+        'employee_name': 'B3',
+        'employee_id': 'B4',
+        'designation': 'B5',
+        'date_of_appointment': 'B6',
+        'days': 'B8',
+        'from_date': 'B9',
+        'to_date': 'B10',
+        'return_date': 'B11',
+        'leave_type': 'B13',
+        'computation_notes': 'B15'
+    }
+
+    for key, cell in mapping.items():
+        if key in payload:
+            ws[cell] = str(payload[key])
+
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+
+    filename = f"leave_application_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.xlsx"
+    return StreamingResponse(out, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': f'attachment; filename={filename}'})
+
+
+@router.post("/generate-pdf")
+def generate_document_pdf(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Generate a PDF document from template data."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    template_type = payload.get("template_type", "").lower()
+    if template_type not in TEMPLATES:
+        raise HTTPException(status_code=400, detail=f"Template not found. Available: {', '.join(TEMPLATES.keys())}")
+
+    template = TEMPLATES[template_type]
+    employee_id = payload.get("employee_id")
+    applicant_id = payload.get("applicant_id")
+
+    employee = None
+    applicant = None
+    if employee_id:
+        employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if applicant_id:
+        applicant = db.query(models.Application).filter(models.Application.id == applicant_id).first()
+
+    context = _build_document_context(payload, employee=employee, applicant=applicant)
+
+    try:
+        text_content = template.format(**context)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing required field: {str(e)}")
+
+    pdf_file = _render_pdf_from_text(text_content)
+    filename = f"{template_type}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.pdf"
+
+    log = models.AuditLog(
+        user_id=current_user.id,
+        action="document_generated",
+        object_type=template_type,
+        object_id=str(employee_id or applicant_id),
+        details=json.dumps(context)
+    )
+    db.add(log)
+    db.commit()
+
+    return StreamingResponse(
+        pdf_file,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.post("/send")
+def send_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    template_type = payload.get("template_type", "").lower()
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Recipient email is required")
+    if template_type not in TEMPLATES:
+        raise HTTPException(status_code=400, detail=f"Template not found. Available: {', '.join(TEMPLATES.keys())}")
+
+    template = TEMPLATES[template_type]
+    employee_id = payload.get("employee_id")
+    applicant_id = payload.get("applicant_id")
+    departments = payload.get("departments") or []
+
+    employee = None
+    applicant = None
+    if employee_id:
+        employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if applicant_id:
+        applicant = db.query(models.Application).filter(models.Application.id == applicant_id).first()
+
+    context = _build_document_context(payload, employee=employee, applicant=applicant)
+
+    try:
+        html_content = template.format(**context)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing required field: {str(e)}")
+
+    repo_root = Path(__file__).resolve().parents[2]
+    uploads_dir = repo_root / "uploads" / "sent_documents"
     uploads_dir.mkdir(parents=True, exist_ok=True)
-    send_file = uploads_dir / f"{template_type}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.html"
+    sent_filename = f"{template_type}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.html"
+    send_file = uploads_dir / sent_filename
     send_file.write_text(html_content, encoding="utf-8")
+
+    email_sent = send_email_if_configured(
+        to_email=email,
+        subject=f"People Plus Document: {template_type.replace('_', ' ').title()}",
+        body=f"Please find the attached {template_type.replace('_', ' ').title()} document.",
+        body_html=(
+            "<html><body><pre style='font-family:sans-serif; white-space:pre-wrap;'>"
+            + html.escape(html_content)
+            + "</pre></body></html>"
+        ),
+        attachments=[{
+            "filename": sent_filename,
+            "content": html_content.encode("utf-8"),
+            "maintype": "text",
+            "subtype": "html"
+        }]
+    )
+    status = "sent" if email_sent else "queued"
 
     log = models.AuditLog(
         user_id=current_user.id,
         action="document_sent",
         object_type=template_type,
         object_id=email,
-        details=json.dumps({"email": email, "template_type": template_type, "context": context})
+        details=json.dumps({
+            "email": email,
+            "template_type": template_type,
+            "status": status,
+            "email_sent": email_sent,
+            "departments": departments,
+            "file_path": str(send_file.relative_to(repo_root)),
+            "context": context,
+        })
     )
     db.add(log)
     db.commit()
 
     return {
-        "message": f"Document {template_type} ready to send to {email}",
-        "saved_path": str(send_file.relative_to(Path(__file__).resolve().parents[2]))
+        "message": f"Document {template_type} {status} to {email}",
+        "saved_path": str(send_file.relative_to(repo_root)),
+        "status": status,
+        "email_sent": email_sent,
+        "recipient_email": email,
+        "departments": departments,
+        "document_file": send_file.name
     }
 
 

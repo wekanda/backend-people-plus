@@ -61,9 +61,18 @@ npm run dev  # Runs at http://localhost:5173
 - Offer signing workflow (DocuSign stub)
 - Contract expiry alerting (30/60/90 days) (NEW)
 
-### 📊 Advanced Features (NEW)
-- **Analytics Dashboard** - HR metrics, recruitment stats, payroll analysis, performance distribution
-- **Contract Generation** - Automated templates (appointments, offers, contracts, separation letters)
+### 📄 Contract Generation - Automated templates (appointments, offers, contracts, separation letters)
+- **Forms Library (`/forms`)** - official TPO Uganda documents rendered 1:1 from the master files:
+  - Offer / Appointment Letter, Contract (Terms & Conditions), Short-Term Contract / Service Agreement,
+    Contract Extension, Notice of Contract Completion, Practicum Placement letter, Letter of Undertaking,
+    SLA, Procurement Request Form and Staff Performance Review with the five-point rating scale.
+  - Every document shows a **fillable form on the left and a live A4 preview** on the right that updates
+    as you type. **Print** produces a page identical to the original printed document (A4, justified text,
+    Proxima Nova/Calibri styling, salary tables, dotted signature lines).
+  - **Download** produces a Word-compatible `.doc` you can print or keep on file.
+  - **Excel Autofill** - upload an `.xlsx` and the app maps its columns (Employee Name, Position, Dates,
+    Salaries, etc.) onto **every document at once**, filling all the forms automatically. Download the
+    ready-made Excel template from the Forms Library to see the expected columns.
 - **Compliance Dashboard** - Audit logs, compliance metrics, data export
 
 ### 📱 Multi-role Dashboards

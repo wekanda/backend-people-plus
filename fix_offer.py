@@ -20,7 +20,7 @@ if idx != -1:
     salary = Column(Float, nullable=True)
     start_date = Column(Date, nullable=True)
     status = Column(String, default="pending")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 '''

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 import json
 
@@ -92,7 +92,7 @@ def submit_assessment(payload: dict, db: Session = Depends(get_db), current_user
         application_id=application_id,
         name=payload.get('name', 'Submitted Assessment'),
         score=score,
-        completed_at=datetime.utcnow()
+        completed_at=datetime.now(timezone.utc)
     )
     db.add(assessment)
     db.commit()

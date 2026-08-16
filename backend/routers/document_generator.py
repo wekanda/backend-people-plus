@@ -6,7 +6,7 @@ Handles document template management and document generation from templates.
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import json
 import os
@@ -219,7 +219,7 @@ async def fill_document_field(
     if existing_field:
         existing_field.field_value = field_value
         existing_field.field_type = field_type
-        existing_field.updated_at = datetime.utcnow()
+        existing_field.updated_at = datetime.now(timezone.utc)
     else:
         new_field = DocumentFieldValue(
             generated_document_id=document_id,
@@ -268,7 +268,7 @@ async def fill_multiple_fields(
         if existing_field:
             existing_field.field_value = field_value
             existing_field.field_type = field_type
-            existing_field.updated_at = datetime.utcnow()
+            existing_field.updated_at = datetime.now(timezone.utc)
         else:
             new_field = DocumentFieldValue(
                 generated_document_id=document_id,
@@ -408,7 +408,7 @@ async def generate_pdf_document(
         doc.file_path = str(filepath)
         doc.file_format = "pdf"
         doc.status = "generated"
-        doc.generated_at = datetime.utcnow()
+        doc.generated_at = datetime.now(timezone.utc)
         db.commit()
         
         return {
@@ -439,7 +439,7 @@ async def download_generated_document(
         raise HTTPException(status_code=400, detail="Document not yet generated")
     
     # Update download timestamp
-    doc.downloaded_at = datetime.utcnow()
+    doc.downloaded_at = datetime.now(timezone.utc)
     db.commit()
     
     return FileResponse(
@@ -510,7 +510,7 @@ async def send_generated_document(
     
     # TODO: Implement actual email sending with SMTP
     # For now, just update the record
-    doc.sent_at = datetime.utcnow()
+    doc.sent_at = datetime.now(timezone.utc)
     doc.sent_to = recipient_email
     doc.status = "sent"
     

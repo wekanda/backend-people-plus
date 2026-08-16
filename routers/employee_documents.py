@@ -5,9 +5,9 @@ Manages electronic personnel files (ePFile) with document upload, approval, and 
 
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pathlib import Path
 import shutil
 import os
@@ -30,8 +30,7 @@ class DocumentTypeSchema(BaseModel):
     is_required: bool
     expiry_period_days: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeDocumentSchema(BaseModel):
@@ -48,8 +47,7 @@ class EmployeeDocumentSchema(BaseModel):
     is_expired: bool
     notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeFileSummarySchema(BaseModel):
@@ -61,8 +59,7 @@ class EmployeeFileSummarySchema(BaseModel):
     missing_required_documents: List[str]
     completeness_percentage: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== ENDPOINTS ====================
@@ -134,7 +131,7 @@ async def upload_employee_document(
     employee_upload_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate unique filename
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     file_ext = Path(file.filename).suffix
     saved_filename = f"{doc_type.name.replace(' ', '_')}_{timestamp}{file_ext}"
     file_path = employee_upload_dir / saved_filename
@@ -155,13 +152,13 @@ async def upload_employee_document(
         file_path=f"employee_documents/{employee_id}/{saved_filename}",
         file_name=file.filename,
         uploaded_by=current_user.id,
-        uploaded_at=datetime.utcnow(),
+        uploaded_at=datetime.now(timezone.utc),
         expiry_date=expiry_date,
         is_expired=False,
         notes=notes,
         approved=current_user.role == "hr_admin",  # Auto-approve HR Admin uploads
         approved_by=current_user.id if current_user.role == "hr_admin" else None,
-        approved_at=datetime.utcnow() if current_user.role == "hr_admin" else None
+        approved_at=datetime.now(timezone.utc) if current_user.role == "hr_admin" else None
     )
     
     db.add(db_document)
@@ -227,7 +224,7 @@ async def approve_document(
     
     document.approved = True
     document.approved_by = current_user.id
-    document.approved_at = datetime.utcnow()
+    document.approved_at = datetime.now(timezone.utc)
     document.notes = notes or document.notes
     
     db.commit()

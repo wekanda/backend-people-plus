@@ -24,6 +24,7 @@ from database import engine, Base, SessionLocal, get_db
 from routers import employees, leave, timesheet, appraisal, documents, notifications, upload, recruitment, finance, requisition
 from routers import hr_tools, ats, calendar_integration, assessments, reporting, document_generation
 from routers import leave_management, employee_documents, document_management, payroll, excel_import
+from routers import form_documents as form_documents_router
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -463,10 +464,40 @@ def ensure_schema_columns():
             with engine.connect() as conn:
                 result = conn.execute(text("PRAGMA table_info(employees)"))
                 columns = [row[1] for row in result]
+                if 'gender' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN gender VARCHAR'))
                 if 'location' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN location VARCHAR'))
                 if 'photo_url' not in columns:
                     conn.execute(text('ALTER TABLE employees ADD COLUMN photo_url VARCHAR'))
+                if 'driving_permit_number' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN driving_permit_number VARCHAR'))
+                if 'emergency_contact_relationship' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN emergency_contact_relationship VARCHAR'))
+                if 'bank_account_holder_name' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN bank_account_holder_name VARCHAR'))
+                if 'education_level' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN education_level VARCHAR'))
+                if 'locker' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN locker VARCHAR'))
+                if 'notice_period' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN notice_period VARCHAR'))
+                if 'contract_review_date' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN contract_review_date DATE'))
+                if 'probation_end' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN probation_end DATE'))
+                if 'missing_recruitment_notes' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_recruitment_notes BOOLEAN DEFAULT 0'))
+                if 'missing_staff_id_form' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_staff_id_form BOOLEAN DEFAULT 0'))
+                if 'missing_performance_appraisals' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_performance_appraisals BOOLEAN DEFAULT 0'))
+                if 'missing_policy_declaration' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_policy_declaration BOOLEAN DEFAULT 0'))
+                if 'missing_end_of_contract_notice' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_end_of_contract_notice BOOLEAN DEFAULT 0'))
+                if 'missing_medical_insurance_form' not in columns:
+                    conn.execute(text('ALTER TABLE employees ADD COLUMN missing_medical_insurance_form BOOLEAN DEFAULT 0'))
 
                 result = conn.execute(text("PRAGMA table_info(employee_documents)"))
                 doc_columns = [row[1] for row in result]
@@ -507,6 +538,7 @@ app.include_router(employee_documents.router)
 app.include_router(document_management.router)
 app.include_router(payroll.router)
 app.include_router(excel_import.router)
+app.include_router(form_documents_router.router)
 
 @app.get("/health")
 @app.get("/api/health")

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from datetime import timedelta
 from typing import List
 import json
@@ -64,7 +64,13 @@ def screen_application(payload: dict, db: Session = Depends(get_db), current_use
     return result
 
 
-def send_email_if_configured(to_email: str, subject: str, body: str) -> bool:
+def send_email_if_configured(
+    to_email: str,
+    subject: str,
+    body: str,
+    body_html: str = None,
+    attachments: list = None
+) -> bool:
     smtp_host = os.getenv('SMTP_HOST')
     smtp_port = int(os.getenv('SMTP_PORT', '587')) if os.getenv('SMTP_PORT') else 587
     smtp_user = os.getenv('SMTP_USER')
@@ -80,6 +86,19 @@ def send_email_if_configured(to_email: str, subject: str, body: str) -> bool:
     msg['To'] = to_email
     msg.set_content(body)
 
+    if body_html:
+        msg.add_alternative(body_html, subtype='html')
+
+    if attachments:
+        for attachment in attachments:
+            content = attachment.get('content')
+            filename = attachment.get('filename')
+            maintype = attachment.get('maintype', 'application')
+            subtype = attachment.get('subtype', 'octet-stream')
+            if isinstance(content, str):
+                content = content.encode('utf-8')
+            msg.add_attachment(content, maintype=maintype, subtype=subtype, filename=filename)
+
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as smtp:
             smtp.starttls()
@@ -89,6 +108,44 @@ def send_email_if_configured(to_email: str, subject: str, body: str) -> bool:
     except Exception as exc:
         print(f"SMTP send failed: {exc}")
         return False
+
+
+@router.get('/email-status')
+def get_email_status():
+    smtp_host = os.getenv('SMTP_HOST')
+    smtp_user = os.getenv('SMTP_USER')
+    smtp_password = os.getenv('SMTP_PASSWORD')
+    smtp_port = os.getenv('SMTP_PORT') or '587'
+    return {
+        'email_configured': bool(smtp_host and smtp_user and smtp_password),
+        'smtp_host': smtp_host or None,
+        'smtp_port': smtp_port,
+        'smtp_user_present': bool(smtp_user),
+    }
+
+
+@router.post('/test-email')
+def test_email_delivery(payload: dict, current_user=Depends(get_current_user)):
+    recipient = payload.get('email') or current_user.email
+    if not recipient:
+        raise HTTPException(status_code=400, detail='Recipient email is required for test email')
+
+    subject = payload.get('subject', 'People Plus Test Email')
+    body = payload.get('body', 'This is a test email from People Plus.')
+    body_html = payload.get('body_html', f"<p>{body}</p>")
+
+    email_sent = send_email_if_configured(
+        to_email=recipient,
+        subject=subject,
+        body=body,
+        body_html=body_html
+    )
+
+    return {
+        'email_sent': email_sent,
+        'recipient': recipient,
+        'message': 'Test email sent successfully' if email_sent else 'Test email failed. Check SMTP settings.'
+    }
 
 
 @router.post('/notify')
@@ -188,7 +245,7 @@ def create_offer_template(payload: dict, db: Session = Depends(get_db), current_
     # payload: { name, content_template }
     log = models.AuditLog(user_id=current_user.id, action='offer_template_created', object_type='offer_template', object_id=None, details=payload.get('name'))
     db.add(log); db.commit()
-    return {'template_id': 'template_' + str(int(datetime.utcnow().timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
+    return {'template_id': 'template_' + str(int(datetime.now(timezone.utc).timestamp())), 'name': payload.get('name'), 'content': payload.get('content_template')}
 
 
 @router.post('/offer/sign')
@@ -234,7 +291,7 @@ def get_consent_status(db: Session = Depends(get_db), current_user=Depends(get_c
 @router.post('/compliance/consent')
 def record_consent(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Record user consent for data processing, GDPR compliance
-    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.utcnow()}")
+    log = models.AuditLog(user_id=current_user.id, action='consent_provided', object_type='compliance', object_id=None, details=f"Consent given at {datetime.now(timezone.utc)}")
     db.add(log); db.commit()
     return {'status': 'consent_recorded', 'message': 'Compliance: User consent recorded'}
 
@@ -379,7 +436,7 @@ def create_onboarding_checklist(payload: dict, db: Session = Depends(get_db), cu
         candidate_name=payload.get('candidate_name', 'New Employee'),
         status='Active',
         items_json=items_json,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     
     db.add(checklist)

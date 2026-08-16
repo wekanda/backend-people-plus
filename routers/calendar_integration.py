@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
@@ -41,7 +41,7 @@ def create_calendar_event(payload: dict, db: Session = Depends(get_db), current_
         raise HTTPException(status_code=403, detail='Insufficient permissions to create calendar events')
 
     # TODO: Call appropriate calendar API (Google Calendar or Microsoft Graph)
-    event_id = f"event_{int(datetime.utcnow().timestamp())}"
+    event_id = f"event_{int(datetime.now(timezone.utc).timestamp())}"
     
     # Log to audit for now
     log = models.AuditLog(

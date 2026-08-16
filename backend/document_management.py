@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 
 from sqlalchemy.orm import Session
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from database import get_db
 
@@ -120,7 +120,7 @@ async def upload_document(
 
     # Verify access
 
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
 
     if not employee:
 
@@ -166,7 +166,7 @@ async def upload_document(
 
         approved_by=current_user.id if current_user.role != "staff" else None,
 
-        approved_at=datetime.utcnow() if current_user.role != "staff" else None
+        approved_at=datetime.now(timezone.utc) if current_user.role != "staff" else None
 
     )
 
@@ -226,7 +226,7 @@ async def get_employee_documents(
 
     """Get all documents for an employee."""
 
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
 
     if not employee:
 
@@ -278,7 +278,7 @@ async def approve_document(
 
     
 
-    doc = db.query(models.EmployeeDocument).get(doc_id)
+    doc = db.get(models.EmployeeDocument, doc_id)
 
     if not doc:
 
@@ -290,7 +290,7 @@ async def approve_document(
 
     doc.approved_by = current_user.id
 
-    doc.approved_at = datetime.utcnow()
+    doc.approved_at = datetime.now(timezone.utc)
 
     db.add(doc)
 
@@ -340,7 +340,7 @@ async def get_personnel_file(
 
     """Get employee's electronic personnel file (e-PFile) summary."""
 
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
 
     if not employee:
 
@@ -512,7 +512,7 @@ def update_personnel_file_completeness(employee_id: int, db: Session):
 
     pfile.missing_documents = ", ".join([d.name for d in missing])
 
-    pfile.last_updated = datetime.utcnow()
+    pfile.last_updated = datetime.now(timezone.utc)
 
     
 

@@ -2,7 +2,7 @@ import inspect
 import os
 from dotenv import load_dotenv
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
@@ -37,7 +37,7 @@ def authenticate_user(db: Session, email: str, password: str):
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     # Ensure 'sub' is a string
     if "sub" in to_encode and not isinstance(to_encode["sub"], str):

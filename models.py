@@ -1,7 +1,11 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, Float, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from database import Base
-from datetime import datetime
+from datetime import datetime, timezone
+
+def utcnow():
+    return datetime.now(timezone.utc)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -57,7 +61,7 @@ class LeaveRequest(Base):
     reason = Column(String)
     type = Column(String)
     status = Column(String)
-    submitted_at = Column(DateTime, default=datetime.utcnow)
+    submitted_at = Column(DateTime, default=utcnow)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     employee = relationship("Employee", back_populates="leave_requests")
 
@@ -91,7 +95,7 @@ class Notification(Base):
     message = Column(String)
     type = Column(String)
     read = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class DocumentTemplate(Base):
@@ -105,7 +109,7 @@ class DocumentTemplate(Base):
     fields_json = Column(Text)
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     generated_documents = relationship("GeneratedDocument", back_populates="template")
 
 
@@ -120,8 +124,8 @@ class GeneratedDocument(Base):
     content = Column(Text, nullable=True)
     status = Column(String, default="draft")
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     template = relationship("DocumentTemplate", back_populates="generated_documents")
     employee = relationship("Employee", back_populates="generated_documents")
     field_values = relationship("DocumentFieldValue", back_populates="document", cascade="all, delete-orphan")
@@ -133,7 +137,7 @@ class DocumentFieldValue(Base):
     document_id = Column(Integer, ForeignKey("generated_documents.id"))
     field_name = Column(String)
     field_value = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     document = relationship("GeneratedDocument", back_populates="field_values")
 
 
@@ -150,7 +154,7 @@ class Requisition(Base):
     requested_by = Column(Integer, ForeignKey("users.id"))
     status = Column(String, default="pending")
     priority = Column(String, default="normal")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
 
@@ -162,7 +166,7 @@ class RequisitionApproval(Base):
     approver_id = Column(Integer, ForeignKey("users.id"))
     action = Column(String)  # approved / rejected
     note = Column(Text, nullable=True)
-    acted_at = Column(DateTime, default=datetime.utcnow)
+    acted_at = Column(DateTime, default=utcnow)
 
 
 class JobPosting(Base):
@@ -172,7 +176,7 @@ class JobPosting(Base):
     description = Column(Text)
     department = Column(String)
     location = Column(String)
-    posted_at = Column(DateTime, default=datetime.utcnow)
+    posted_at = Column(DateTime, default=utcnow)
     closing_date = Column(Date)
     status = Column(String, default="open")
     created_by = Column(Integer, ForeignKey("users.id"))
@@ -192,7 +196,7 @@ class Application(Base):
     resume_url = Column(String, nullable=True)
     cover_letter = Column(Text, nullable=True)
     status = Column(String, default="submitted")
-    applied_at = Column(DateTime, default=datetime.utcnow)
+    applied_at = Column(DateTime, default=utcnow)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
@@ -219,7 +223,7 @@ class Payslip(Base):
     tax = Column(Float, default=0.0)
     deductions = Column(Float, default=0.0)
     net_pay = Column(Float, default=0.0)
-    generated_at = Column(DateTime, default=datetime.utcnow)
+    generated_at = Column(DateTime, default=utcnow)
     pdf_url = Column(String, nullable=True)
     generated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
@@ -234,7 +238,7 @@ class Applicant(Base):
     email = Column(String, index=True)
     phone = Column(String, nullable=True)
     source = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     resume_url = Column(String, nullable=True)
     consent = Column(Boolean, default=True)
 
@@ -246,7 +250,7 @@ class ApplicationStage(Base):
     stage = Column(String)
     status = Column(String)
     note = Column(Text, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow)
 
 
 class Interview(Base):
@@ -281,7 +285,7 @@ class Feedback(Base):
     reviewer_id = Column(Integer, ForeignKey("users.id"))
     rating = Column(Integer, nullable=True)
     comments = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class Offer(Base):
@@ -295,7 +299,7 @@ class Offer(Base):
     terms = Column(Text, nullable=True)
     start_date = Column(Date, nullable=True)
     status = Column(String, default="pending")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 # ==================== PHASE 1: LEAVE MANAGEMENT ====================
@@ -309,7 +313,7 @@ class LeaveType(Base):
     description = Column(String, nullable=True)
     is_paid = Column(Boolean, default=True)
     requires_manager_approval = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class LeaveBalance(Base):
@@ -321,7 +325,7 @@ class LeaveBalance(Base):
     balance = Column(Float, default=0.0)
     accrued = Column(Float, default=0.0)
     used = Column(Float, default=0.0)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=utcnow)
     employee = relationship("Employee", backref="leave_balances")
     leave_type = relationship("LeaveType")
 
@@ -336,7 +340,7 @@ class DocumentType(Base):
     category = Column(String)
     is_required = Column(Boolean, default=True)
     expiry_period_days = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class EmployeeDocument(Base):
@@ -348,7 +352,7 @@ class EmployeeDocument(Base):
     file_path = Column(String)
     file_name = Column(String)
     uploaded_by = Column(Integer, ForeignKey("users.id"))
-    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    uploaded_at = Column(DateTime, default=utcnow)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved = Column(Boolean, default=False)
     approved_at = Column(DateTime, nullable=True)
@@ -365,7 +369,7 @@ class PersonnelFile(Base):
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), unique=True, index=True)
     completeness_percentage = Column(Float, default=0.0)
-    last_updated = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=utcnow)
     missing_documents = Column(String, nullable=True)  # comma-separated list
     flagged_missing_count = Column(Integer, default=0)
     flagged_expired_count = Column(Integer, default=0)
@@ -378,7 +382,7 @@ class DocumentAudit(Base):
     employee_document_id = Column(Integer, ForeignKey("employee_documents.id"))
     action = Column(String)  # uploaded, approved, rejected, expired
     performed_by = Column(Integer, ForeignKey("users.id"))
-    performed_at = Column(DateTime, default=datetime.utcnow)
+    performed_at = Column(DateTime, default=utcnow)
     details = Column(Text, nullable=True)
 
 
@@ -396,7 +400,7 @@ class Payroll(Base):
     other_deductions = Column(Float, default=0.0)
     net_salary = Column(Float, default=0.0)
     created_by = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     status = Column(String, default="draft")  # draft, submitted, approved, paid
@@ -414,7 +418,7 @@ class CompanySettings(Base):
     contact_phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
     country = Column(String, default="Uganda")
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
@@ -447,4 +451,4 @@ class AuditLog(Base):
     object_type = Column(String)
     object_id = Column(String)
     details = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)

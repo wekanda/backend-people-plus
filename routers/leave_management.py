@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import logging
 import traceback
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from database import get_db
 from auth import get_current_user, check_role, check_employee_access
 import models
@@ -27,8 +27,7 @@ class LeaveTypeSchema(BaseModel):
     is_paid: bool = True
     requires_manager_approval: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeaveBalanceSchema(BaseModel):
@@ -37,8 +36,7 @@ class LeaveBalanceSchema(BaseModel):
     accrued: float
     used: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeaveRequestSchema(BaseModel):
@@ -49,8 +47,7 @@ class LeaveRequestSchema(BaseModel):
     reason: str
     days: Optional[float] = None  # Auto-calculated if not provided
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeaveRequestResponseSchema(BaseModel):
@@ -65,8 +62,7 @@ class LeaveRequestResponseSchema(BaseModel):
     submitted_at: datetime
     reviewed_by: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeaveApprovalSchema(BaseModel):
@@ -227,7 +223,7 @@ async def submit_leave_request(
             days=days,
             reason=request.reason,
             status="pending",
-            submitted_at=datetime.utcnow()
+            submitted_at=datetime.now(timezone.utc)
         )
         db.add(db_leave_request)
         db.commit()
@@ -323,7 +319,7 @@ async def approve_leave_request(
         if balance:
             balance.used += leave_request.days
             balance.balance -= leave_request.days
-            balance.last_updated = datetime.utcnow()
+            balance.last_updated = datetime.now(timezone.utc)
     
     elif approval.action == "rejected":
         leave_request.status = "rejected"

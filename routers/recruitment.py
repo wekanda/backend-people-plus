@@ -4,7 +4,7 @@ from typing import List
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import date
+from datetime import date, timezone
 from datetime import datetime
 
 router = APIRouter(prefix="/recruitment", tags=["recruitment"])
@@ -114,7 +114,7 @@ def publish_job(job_id: int, payload: dict, db: Session = Depends(get_db), curre
 
     job.is_internal = bool(is_internal)
     job.channels = ','.join(channels) if channels else None
-    job.published_at = datetime.utcnow()
+    job.published_at = datetime.now(timezone.utc)
     job.status = 'published'
 
     # Simulate external posting (stub) - record channels used

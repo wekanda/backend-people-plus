@@ -39,9 +39,9 @@ def create_interview(payload: dict, db: Session = Depends(get_db), current_user=
         try:
             scheduled_at = datetime.fromisoformat(f"{date_value}T{time_value}") if time_value else datetime.fromisoformat(date_value)
         except Exception:
-            scheduled_at = datetime.utcnow()
+            scheduled_at = datetime.now(timezone.utc)
     else:
-        scheduled_at = datetime.utcnow()
+        scheduled_at = datetime.now(timezone.utc)
 
     interview = models.Interview(
         application_id=payload.get('application_id'),

@@ -10,7 +10,7 @@ import models
 
 from auth import get_current_user
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 
@@ -91,7 +91,7 @@ def generate_payslip(payload: dict, db: Session = Depends(get_db), current_user=
 
         net_pay=net,
 
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(timezone.utc),
 
         generated_by=current_user.id
 

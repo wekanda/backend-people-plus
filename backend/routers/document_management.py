@@ -4,7 +4,7 @@ Handles employee documents, e-PFile, document approvals, and audit trails
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from database import get_db
 from auth import get_current_user
 import models
@@ -59,7 +59,7 @@ async def upload_document(
 ):
     """Upload a document for an employee's personnel file."""
     # Verify access
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
@@ -82,7 +82,7 @@ async def upload_document(
         uploaded_by=current_user.id,
         approved=current_user.role != "staff",
         approved_by=current_user.id if current_user.role != "staff" else None,
-        approved_at=datetime.utcnow() if current_user.role != "staff" else None
+        approved_at=datetime.now(timezone.utc) if current_user.role != "staff" else None
     )
     db.add(doc)
     
@@ -112,7 +112,7 @@ async def get_employee_documents(
     db: Session = Depends(get_db)
 ):
     """Get all documents for an employee."""
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
@@ -138,13 +138,13 @@ async def approve_document(
     if current_user.role not in ["hr_admin", "project_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
-    doc = db.query(models.EmployeeDocument).get(doc_id)
+    doc = db.get(models.EmployeeDocument, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     
     doc.approved = True
     doc.approved_by = current_user.id
-    doc.approved_at = datetime.utcnow()
+    doc.approved_at = datetime.now(timezone.utc)
     db.add(doc)
     
     # Create audit record
@@ -169,7 +169,7 @@ async def get_personnel_file(
     db: Session = Depends(get_db)
 ):
     """Get employee's electronic personnel file (e-PFile) summary."""
-    employee = db.query(models.Employee).get(employee_id)
+    employee = db.get(models.Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
@@ -255,7 +255,7 @@ def update_personnel_file_completeness(employee_id: int, db: Session):
     
     pfile.flagged_missing_count = len(missing)
     pfile.missing_documents = ", ".join([d.name for d in missing])
-    pfile.last_updated = datetime.utcnow()
+    pfile.last_updated = datetime.now(timezone.utc)
     
     db.commit()
 

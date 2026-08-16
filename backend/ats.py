@@ -8,7 +8,7 @@ import models
 
 from auth import get_current_user
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import io
 
@@ -150,7 +150,7 @@ def schedule_interview(app_id: int, payload: dict, db: Session = Depends(get_db)
 
     except Exception:
 
-        scheduled = datetime.utcnow()
+        scheduled = datetime.now(timezone.utc)
 
     interview = models.Interview(application_id=app_id, scheduled_at=scheduled, duration_minutes=payload.get('duration_minutes',60), panel=','.join(map(str,payload.get('panel',[]))), location=payload.get('location'))
 
@@ -240,7 +240,7 @@ def convert_to_employee(app_id: int, payload: dict, db: Session = Depends(get_db
 
         applicant = None
 
-    emp = models.Employee(full_name=app_obj.applicant_name, file_code=payload.get('file_code') or f"EMP{int(datetime.utcnow().timestamp())}", project=payload.get('project','New Hire'), status='Active', position=payload.get('position','New Hire'), contact_number=payload.get('phone'))
+    emp = models.Employee(full_name=app_obj.applicant_name, file_code=payload.get('file_code') or f"EMP{int(datetime.now(timezone.utc).timestamp())}", project=payload.get('project','New Hire'), status='Active', position=payload.get('position','New Hire'), contact_number=payload.get('phone'))
 
     db.add(emp)
 
@@ -270,7 +270,7 @@ def upload_resume(app_id: int, file: UploadFile = File(...), db: Session = Depen
 
     content = file.file.read()
 
-    filename = f"resume_{app_id}_{int(datetime.utcnow().timestamp())}_{file.filename}"
+    filename = f"resume_{app_id}_{int(datetime.now(timezone.utc).timestamp())}_{file.filename}"
 
     path = f"backend/static/uploads/{filename}"
 
@@ -450,7 +450,7 @@ def _create_ics(invite):
 
     # invite: dict with organizer, attendees (list of emails), start_dt (ISO), end_dt, summary, description, location
 
-    uid = f"invite-{int(datetime.utcnow().timestamp())}"
+    uid = f"invite-{int(datetime.now(timezone.utc).timestamp())}"
 
     start = invite.get('start_dt')
 
@@ -476,7 +476,7 @@ BEGIN:VEVENT
 
 UID:{uid}
 
-DTSTAMP:{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}
+DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}
 
 DTSTART:{start.replace('-','').replace(':','').replace('T','T')}
 
@@ -572,7 +572,7 @@ def score_assessment(payload: dict, db: Session = Depends(get_db), current_user=
 
     score = (correct / total * 100) if total > 0 else 0
 
-    assessment = models.Assessment(application_id=payload.get('application_id'), name=payload.get('name'), score=score, results_url=None, completed_at=datetime.utcnow())
+    assessment = models.Assessment(application_id=payload.get('application_id'), name=payload.get('name'), score=score, results_url=None, completed_at=datetime.now(timezone.utc))
 
     db.add(assessment)
 

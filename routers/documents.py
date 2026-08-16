@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import models
 from database import get_db
 from auth import get_current_user, check_employee_access
@@ -25,8 +25,7 @@ class DocumentResponse(BaseModel):
     employee_id: int
     document_type: str
     created_at: date
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.post("/legacy-upload")
 async def upload_doc(employee_id: int, document_type: str, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):

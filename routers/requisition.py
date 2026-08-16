@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models
 from auth import get_current_user
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/requisitions", tags=["requisitions"])
 
@@ -65,11 +65,11 @@ def action_requisition(req_id: int, payload: dict, db: Session = Depends(get_db)
     if action == 'approve':
         req.status = 'approved'
         req.approved_by = current_user.id
-        req.approved_at = datetime.utcnow()
+        req.approved_at = datetime.now(timezone.utc)
     elif action == 'reject':
         req.status = 'rejected'
         req.approved_by = current_user.id
-        req.approved_at = datetime.utcnow()
+        req.approved_at = datetime.now(timezone.utc)
     else:
         raise HTTPException(status_code=400, detail='Unknown action')
 
