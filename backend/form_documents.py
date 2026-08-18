@@ -272,6 +272,16 @@ def render_document_html(form, values=None):
             ctx["item_total"] = tot or ""
         except Exception:
             ctx["item_total"] = ""
+    # Leave tracker balances = entitled - taken (auto-computed)
+    if form.get("key") == "leave_tracker":
+        for base in ("annual", "sick", "maternity", "paternity"):
+            en, tk = ctx.get(f"{base}_entitled", ""), ctx.get(f"{base}_taken", "")
+            try:
+                bal = (float(str(en).replace(",", "")) if en not in (None, "") else 0) - \
+                      (float(str(tk).replace(",", "")) if tk not in (None, "") else 0)
+                ctx[f"{base}_balance"] = bal if bal else ""
+            except Exception:
+                ctx[f"{base}_balance"] = ""
     body = _apply_template(form["template"], ctx)
     title = esc(form.get("name", "Document"))
     return f"""<!DOCTYPE html>

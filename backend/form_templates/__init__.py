@@ -14,6 +14,8 @@ from .medical_insurance import MEDICAL_INSURANCE
 from .leave_application import LEAVE_APPLICATION
 from .employee_data_form import EMPLOYEE_DATA
 from .payslip_form import PAYSLIP_FORM
+from .stores_requisition import STORES_REQUISITION
+from .leave_tracker import LEAVE_TRACKER
 
 __all__ = [
     "OFFER_LETTER",
@@ -32,4 +34,6 @@ __all__ = [
     "LEAVE_APPLICATION",
     "EMPLOYEE_DATA",
     "PAYSLIP_FORM",
+    "STORES_REQUISITION",
+    "LEAVE_TRACKER",
 ]
