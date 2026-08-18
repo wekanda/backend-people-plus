@@ -9,6 +9,11 @@ from .short_term_contract import SHORT_TERM_CONTRACT
 from .employment_contract import EMPLOYMENT_CONTRACT
 from .performance_review import PERFORMANCE_REVIEW
 from .social_media_engagement import SOCIAL_MEDIA_ENGAGEMENT
+from .contract_renewal import CONTRACT_RENEWAL
+from .medical_insurance import MEDICAL_INSURANCE
+from .leave_application import LEAVE_APPLICATION
+from .employee_data_form import EMPLOYEE_DATA
+from .payslip_form import PAYSLIP_FORM
 
 __all__ = [
     "OFFER_LETTER",
@@ -22,4 +27,9 @@ __all__ = [
     "EMPLOYMENT_CONTRACT",
     "PERFORMANCE_REVIEW",
     "SOCIAL_MEDIA_ENGAGEMENT",
+    "CONTRACT_RENEWAL",
+    "MEDICAL_INSURANCE",
+    "LEAVE_APPLICATION",
+    "EMPLOYEE_DATA",
+    "PAYSLIP_FORM",
 ]

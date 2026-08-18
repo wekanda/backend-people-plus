@@ -5,8 +5,11 @@ import io
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response, StreamingResponse
+from sqlalchemy.orm import Session
 
 from auth import get_current_user
+from database import get_db
+import models
 from backend import form_documents
 
 router = APIRouter(prefix="/api/form-documents", tags=["form-documents"])
@@ -88,6 +91,26 @@ async def excel_autofill(file: UploadFile = File(...), user=Depends(get_current_
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not read workbook: {exc}")
     return result
+
+
+@router.get("/employee-autofill/{employee_id}")
+def employee_autofill(employee_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Auto-populate all document forms from an employee record in the database."""
+    _check_role(user)
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    results = form_documents.autofill_forms_from_employee(employee)
+    return {
+        "employee": {
+            "id": employee.id,
+            "full_name": employee.full_name,
+            "file_code": employee.file_code,
+            "position": employee.position,
+            "project": employee.project,
+        },
+        "forms": results,
+    }
 
 
 @router.post("/excel-template")

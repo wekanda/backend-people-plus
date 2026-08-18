@@ -147,6 +147,75 @@ _FN_RE = re.compile(r"\{first_name\(([\w_]+)\)\}")
 
 def _apply_template(tpl, ctx):
     """Substitute {h(x)} / {h(x,'ph')} / {hd(x)} / {hm(x)} / {first_name(x)}."""
+# Map Employee database columns to form fields (single source of truth -> no retyping).
+EMPLOYEE_FIELD_MAP = {
+    "full_name": ["full_name"],
+    "employee_name": ["full_name"],
+    "to_name": ["full_name"],
+    "intern_name": ["full_name"],
+    "contractor_name": ["full_name"],
+    "employee_no": ["file_code"],
+    "employee_id": ["file_code"],
+    "position": ["position"],
+    "to_title": ["position"],
+    "employee_title": ["position"],
+    "job_title": ["position"],
+    "contractor_title": ["position"],
+    "department": ["project"],
+    "project": ["project"],
+    "project_name": ["project"],
+    "duty_station": ["location"],
+    "location": ["location"],
+    "supervisor": ["supervisor"],
+    "report_to": ["supervisor"],
+    "phone": ["contact_number"],
+    "principal_contact": ["contact_number"],
+    "email": ["email"],
+    "principal_email": ["email"],
+    "date_of_appointment": ["date_of_appointment"],
+    "appointment_date": ["date_of_appointment"],
+    "contract_start": ["contract_start"],
+    "new_start": ["contract_start"],
+    "contract_end": ["contract_end"],
+    "new_end": ["contract_end"],
+    "expiry_date": ["contract_end"],
+    "employment_type": ["employment_type"],
+    "notice_period": ["notice_period"],
+    "status": ["status"],
+    "grade": ["grade"],
+}
+
+def autofill_from_employee(employee):
+    """Build fill-in values for the Forms Library from an employee database record."""
+    source = {}
+    for attr in ("full_name", "file_code", "position", "project", "location",
+                 "contact_number", "date_of_appointment", "contract_start",
+                 "contract_end", "employment_type", "notice_period", "status", "grade"):
+        v = getattr(employee, attr, None)
+        if v is None:
+            continue
+        source[attr] = v.strftime("%Y-%m-%d") if hasattr(v, "strftime") else v
+    values_map = {}
+    for fname, attrs in EMPLOYEE_FIELD_MAP.items():
+        for a in attrs:
+            if source.get(a) not in (None, ""):
+                values_map[fname] = source[a]
+                break
+    return values_map
+
+def autofill_forms_from_employee(employee):
+    """Return previews + values for all forms given an employee DB record."""
+    common = autofill_from_employee(employee)
+    results = {}
+    for form in DOCUMENT_FORMS:
+        allowed = {f["name"] for f in form.get("fields", [])}
+        values = {k: v for k, v in common.items() if k in allowed}
+        results[form["key"]] = {
+            "name": form["name"],
+            "values": values,
+            "preview": render_document_html(form, values),
+        }
+    return results
     def repl_fn(m):
         name = m.group(1)
         val = ctx.get(name, "")
