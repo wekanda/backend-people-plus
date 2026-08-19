@@ -141,6 +141,20 @@ class DocumentFieldValue(Base):
     document = relationship("GeneratedDocument", back_populates="field_values")
 
 
+class SavedForm(Base):
+    """Persisted filled form values from the Forms Library, per user."""
+    __tablename__ = "saved_forms"
+    id = Column(Integer, primary_key=True, index=True)
+    form_key = Column(String, index=True)
+    form_name = Column(String)
+    employee_id = Column(Integer, nullable=True)
+    values_json = Column(Text)
+    html = Column(Text, nullable=True)
+    created_by = Column(Integer, index=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
 class Requisition(Base):
     __tablename__ = "requisitions"
     id = Column(Integer, primary_key=True, index=True)
