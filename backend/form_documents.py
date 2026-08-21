@@ -147,6 +147,33 @@ _FN_RE = re.compile(r"\{first_name\(([\w_]+)\)\}")
 
 def _apply_template(tpl, ctx):
     """Substitute {h(x)} / {h(x,'ph')} / {hd(x)} / {hm(x)} / {first_name(x)}."""
+    def repl_fn(m):
+        name = m.group(1)
+        val = ctx.get(name, "")
+        fn = str(val).strip().split()[0] if str(val).strip() else "____"
+        return esc(fn)
+
+    def repl_h(m):
+        return h(ctx.get(m.group(1), ""))
+
+    def repl_hp(m):
+        return h(ctx.get(m.group(1), ""), m.group(2))
+
+    def repl_hd(m):
+        return hd(ctx.get(m.group(1), ""))
+
+    def repl_hm(m):
+        return hm(ctx.get(m.group(1), ""))
+
+    tpl = _FN_RE.sub(repl_fn, tpl)
+    tpl = _HD_RE.sub(repl_hd, tpl)
+    tpl = _HM_RE.sub(repl_hm, tpl)
+    tpl = _HP_RE.sub(repl_hp, tpl)
+    tpl = _H_RE.sub(repl_h, tpl)
+    tpl = tpl.replace("{sign_dots}", DEFAULT_SIGN)
+    return tpl
+
+
 # Map Employee database columns to form fields (single source of truth -> no retyping).
 EMPLOYEE_FIELD_MAP = {
     "full_name": ["full_name"],
@@ -216,31 +243,6 @@ def autofill_forms_from_employee(employee):
             "preview": render_document_html(form, values),
         }
     return results
-    def repl_fn(m):
-        name = m.group(1)
-        val = ctx.get(name, "")
-        fn = str(val).strip().split()[0] if str(val).strip() else "____"
-        return esc(fn)
-
-    def repl_h(m):
-        return h(ctx.get(m.group(1), ""))
-
-    def repl_hp(m):
-        return h(ctx.get(m.group(1), ""), m.group(2))
-
-    def repl_hd(m):
-        return hd(ctx.get(m.group(1), ""))
-
-    def repl_hm(m):
-        return hm(ctx.get(m.group(1), ""))
-
-    tpl = _FN_RE.sub(repl_fn, tpl)
-    tpl = _HD_RE.sub(repl_hd, tpl)
-    tpl = _HM_RE.sub(repl_hm, tpl)
-    tpl = _HP_RE.sub(repl_hp, tpl)
-    tpl = _H_RE.sub(repl_h, tpl)
-    tpl = tpl.replace("{sign_dots}", DEFAULT_SIGN)
-    return tpl
 
 
 def render_document_html(form, values=None):

@@ -100,6 +100,7 @@ def download_form_document(key: str, payload: dict, user=Depends(get_current_use
         raise HTTPException(status_code=404, detail="Form not found")
     if not form_documents.can_generate(user.role, form):
         raise HTTPException(status_code=403, detail="Only HR Admin can download official documents")
+    html = form_documents.render_document_html(form, payload.get("values") or {})
     word_html = html.replace(
         "<html",
         '<html xmlns:o="urn:schemas-microsoft-com:office:office" '
