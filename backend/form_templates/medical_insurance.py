@@ -1,7 +1,7 @@
 MEDICAL_INSURANCE = {
     "name": "MEDICAL INSURANCE FORM",
     "key": "medical_insurance",
-    "category": "HR & Finance",
+    "category": "Payroll & Benefits",
     "description": "Staff medical insurance registration - principal, spouse and up to two children.",
     "fields": [
         {"name": "date", "label": "Date", "type": "date", "required": True},

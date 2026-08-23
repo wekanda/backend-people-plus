@@ -1,7 +1,7 @@
 PROCUREMENT_REQUEST = {
     "name": "PROCUREMENT REQUEST FORM",
     "key": "procurement_request",
-    "category": "Operations",
+    "category": "Procurement & Stores",
     "description": "Procurement request form with itemised cost table.",
     "fields": [
         {"name": "prc_no", "label": "PRC No.", "type": "text", "required": False},

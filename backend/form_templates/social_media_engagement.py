@@ -1,7 +1,7 @@
 SOCIAL_MEDIA_ENGAGEMENT = {
     "name": "STAFF WELLNESS & SOCIAL MEDIA ENGAGEMENT PLAN",
     "key": "social_media_engagement",
-    "category": "Communications",
+    "category": "Communications & Engagement",
     "description": "Staff wellness activities and social media content plan (TPO Uganda).",
     "fields": [
         {"name": "date", "label": "Plan Date", "type": "date", "required": False},

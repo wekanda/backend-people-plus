@@ -1,7 +1,7 @@
 PERFORMANCE_REVIEW = {
     "name": "STAFF PERFORMANCE REVIEW RATING",
     "key": "performance_review",
-    "category": "Performance",
+    "category": "Performance & Appraisals",
     "description": "Performance review rating form using the TPO five-point rating scale.",
     "fields": [
         {"name": "employee_name", "label": "Employee Name", "type": "text", "required": True},

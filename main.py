@@ -25,10 +25,37 @@ from routers import employees, leave, timesheet, appraisal, documents, notificat
 from routers import hr_tools, ats, calendar_integration, assessments, reporting, document_generation
 from routers import leave_management, employee_documents, document_management, payroll, excel_import
 from routers import form_documents as form_documents_router
+from routers import smart_alerts, hr_resources
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_columns():
+    """Add newly introduced columns to existing databases (works for SQLite & Postgres)."""
+    stmts = [
+        ("employees", "date_of_birth", "DATE"),
+        ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
+    ]
+    with engine.connect() as conn:
+        for table, col, ddl in stmts:
+            try:
+                cols = {r[1] for r in conn.execute(text(f"PRAGMA table_info({table})"))} if "sqlite" in str(engine.url) else None
+                if cols is not None and col in cols:
+                    continue
+                existing = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name=:t AND column_name=:c"
+                ), {"t": table, "c": col}).first() if cols is None else None
+                if existing:
+                    continue
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+                conn.commit()
+            except Exception as exc:  # pragma: no cover
+                print(f"[migrate] skip {table}.{col}: {exc}")
+
+
+_ensure_columns()
 
 def initialize_seed_users():
     test_users = [
@@ -539,6 +566,8 @@ app.include_router(document_management.router)
 app.include_router(payroll.router)
 app.include_router(excel_import.router)
 app.include_router(form_documents_router.router)
+app.include_router(smart_alerts.router)
+app.include_router(hr_resources.router)
 
 @app.get("/health")
 @app.get("/api/health")

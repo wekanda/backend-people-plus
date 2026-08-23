@@ -1,7 +1,7 @@
 LEAVE_TRACKER = {
     "name": "LEAVE TRACKER",
     "key": "leave_tracker",
-    "category": "Leave",
+    "category": "Leave & Attendance",
     "description": "Staff leave entitlement tracker aligned with LEAVE TRACKER.xlsx.",
     "fields": [
         {"name": "employee_name", "label": "Employee Name", "type": "text", "required": True},

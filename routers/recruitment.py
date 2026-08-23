@@ -149,13 +149,31 @@ def update_application_status(app_id: int, payload: dict, db: Session = Depends(
 
 @router.post("/internships")
 def create_internship(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    ptype = (payload.get('participant_type') or 'intern').strip().lower()
+    if ptype not in ("intern", "volunteer"):
+        ptype = "intern"
+
+    def _to_date(v):
+        if not v:
+            return None
+        if isinstance(v, date):
+            return v
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(str(v).strip(), fmt).date()
+            except ValueError:
+                continue
+        return None
+
     internship = models.Internship(
         candidate_name=payload.get('candidate_name'),
         email=payload.get('email'),
-        start_date=payload.get('start_date'),
-        end_date=payload.get('end_date'),
+        participant_type=ptype,
+        start_date=_to_date(payload.get('start_date')),
+        end_date=_to_date(payload.get('end_date')),
         mentor_id=payload.get('mentor_id') or current_user.id,
-        notes=payload.get('notes')
+        notes=payload.get('notes'),
+        status=(payload.get('status') or 'planned')
     )
     db.add(internship)
     db.commit()
@@ -164,9 +182,23 @@ def create_internship(payload: dict, db: Session = Depends(get_db), current_user
 
 
 @router.get("/internships")
-def list_internships(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role in ("hr_admin", "project_manager"):
-        items = db.query(models.Internship).all()
-    else:
-        items = db.query(models.Internship).filter(models.Internship.email == current_user.email).all()
+def list_internships(participant_type: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    q = db.query(models.Internship)
+    if current_user.role not in ("hr_admin", "project_manager"):
+        q = q.filter(models.Internship.email == current_user.email)
+    if participant_type in ("intern", "volunteer"):
+        q = q.filter(models.Internship.participant_type == participant_type)
+    items = q.order_by(models.Internship.id.desc()).all()
     return items
+
+
+@router.get("/internships/summary")
+def internships_summary(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Counts of interns vs volunteers for the Internships hub."""
+    base = db.query(models.Internship)
+    if current_user.role not in ("hr_admin", "project_manager"):
+        base = base.filter(models.Internship.email == current_user.email)
+    return {
+        "interns": base.filter(models.Internship.participant_type == "intern").count(),
+        "volunteers": base.filter(models.Internship.participant_type == "volunteer").count(),
+    }

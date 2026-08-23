@@ -1,7 +1,7 @@
 STORES_REQUISITION = {
     "name": "STORES REQUISITION FORM",
     "key": "stores_requisition",
-    "category": "Operations",
+    "category": "Procurement & Stores",
     "description": "Stores/issues requisition request and approval workflow.",
     "fields": [
         {"name": "requisition_no", "label": "Requisition No.", "type": "text", "required": False},

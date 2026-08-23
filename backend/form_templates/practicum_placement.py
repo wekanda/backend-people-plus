@@ -1,7 +1,7 @@
 PRACTICUM_PLACEMENT = {
     "name": "ACCEPTANCE LETTER FOR PRACTICUM PLACEMENT",
     "key": "practicum_placement",
-    "category": "Internships",
+    "category": "Internships & Volunteers",
     "description": "Internship placement acceptance letter (TPO Uganda).",
     "fields": [
         {"name": "date", "label": "Date", "type": "date", "required": True},

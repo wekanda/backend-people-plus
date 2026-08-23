@@ -1,7 +1,7 @@
 PAYSLIP_FORM = {
     "name": "PAYSLIP",
     "key": "payslip",
-    "category": "Payroll",
+    "category": "Payroll & Benefits",
     "description": "Monthly payslip aligned with PAYSLIP.xlsx - earnings, deductions and net pay.",
     "fields": [
         {"name": "employee_name", "label": "Employee Name", "type": "text", "required": True},

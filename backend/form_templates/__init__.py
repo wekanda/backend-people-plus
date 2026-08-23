@@ -16,6 +16,10 @@ from .employee_data_form import EMPLOYEE_DATA
 from .payslip_form import PAYSLIP_FORM
 from .stores_requisition import STORES_REQUISITION
 from .leave_tracker import LEAVE_TRACKER
+from .fuel_allowance import FUEL_ALLOWANCE
+from .condolence_benefit import CONDOLENCE_BENEFIT
+from .transport_claim import TRANSPORT_CLAIM
+from .staff_dependants import STAFF_DEPENDANTS
 
 __all__ = [
     "OFFER_LETTER",
@@ -36,4 +40,8 @@ __all__ = [
     "PAYSLIP_FORM",
     "STORES_REQUISITION",
     "LEAVE_TRACKER",
+    "FUEL_ALLOWANCE",
+    "CONDOLENCE_BENEFIT",
+    "TRANSPORT_CLAIM",
+    "STAFF_DEPENDANTS",
 ]

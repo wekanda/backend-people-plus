@@ -1,7 +1,7 @@
 LEAVE_APPLICATION = {
     "name": "LEAVE APPLICATION FORM",
     "key": "leave_application",
-    "category": "Leave",
+    "category": "Leave & Attendance",
     "description": "Staff leave application with automatic day computation (TPO Uganda).",
     "fields": [
         {"name": "employee_name", "label": "Employee Name", "type": "text", "required": True},

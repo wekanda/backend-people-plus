@@ -44,6 +44,7 @@ class Employee(Base):
     missing_policy_declaration = Column(Boolean, default=False)
     missing_end_of_contract_notice = Column(Boolean, default=False)
     photo_url = Column(String, nullable=True)
+    date_of_birth = Column(Date, nullable=True)
 
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")
@@ -219,6 +220,7 @@ class Internship(Base):
     id = Column(Integer, primary_key=True, index=True)
     candidate_name = Column(String)
     email = Column(String)
+    participant_type = Column(String, nullable=False, server_default="intern")  # intern | volunteer
     start_date = Column(Date)
     end_date = Column(Date)
     mentor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
