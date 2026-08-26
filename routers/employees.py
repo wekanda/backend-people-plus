@@ -201,7 +201,10 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db), cur
     existing = db.query(models.Employee).filter(models.Employee.file_code == employee.file_code).first()
     if existing:
         raise HTTPException(status_code=400, detail="File code already exists")
-    db_employee = models.Employee(**employee.dict())
+    # Only pass fields that map to real model columns (schema has extra Pydantic fields)
+    valid_cols = set(models.Employee.__table__.columns.keys())
+    payload = {k: v for k, v in employee.dict().items() if k in valid_cols and v is not None}
+    db_employee = models.Employee(**payload)
     db.add(db_employee)
     db.commit()
     db.refresh(db_employee)
@@ -215,8 +218,10 @@ def update_employee(employee_id: int, employee: EmployeeUpdate, db: Session = De
     if current_user.role != "hr_admin" and current_user.employee_id != employee_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    valid_cols = set(models.Employee.__table__.columns.keys())
     for field, value in employee.dict(exclude_unset=True).items():
-        setattr(db_employee, field, value)
+        if field in valid_cols:
+            setattr(db_employee, field, value)
     db.commit()
     db.refresh(db_employee)
     return db_employee
