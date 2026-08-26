@@ -12,6 +12,30 @@ from datetime import date, timedelta
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
 
+# Maps personal-file document groups -> employee missing-* columns + display labels
+MISSING_DOC_GROUPS = {
+    "Recruitment documents": [
+        ("missing_app_resume", "Application letter / CV"),
+        ("missing_academic_docs", "Academic documents"),
+        ("missing_recruitment_notes", "Recruitment results / report"),
+    ],
+    "Bio data information": [
+        ("missing_staff_id_form", "Staff ID form"),
+        ("missing_appointment_letter", "Employee data / appointment form"),
+        ("missing_national_id", "National ID"),
+    ],
+    "Performance management documents": [
+        ("missing_performance_appraisals", "Performance appraisal"),
+    ],
+    "Staff exit documents": [
+        ("missing_end_of_contract_notice", "End of contract notice"),
+    ],
+    "Policy & code of conduct": [
+        ("missing_policy_declaration", "Employee policy attestation"),
+    ],
+}
+
+
 def _next_occurrence(ref: date, target: date, within: int) -> int:
     """Days until the next annual occurrence of target from ref (or None)."""
     try:
@@ -36,6 +60,7 @@ def smart_alerts(days: int = 30, db: Session = Depends(get_db), user=Depends(get
     project_end = []
     probation_end = []
     review_due = []
+    missing_docs = {group: [] for group in MISSING_DOC_GROUPS}
 
     for emp in employees:
         # Birthdays (next within N days)
@@ -101,6 +126,16 @@ def smart_alerts(days: int = 30, db: Session = Depends(get_db), user=Depends(get
                     "detail": "contract review is due",
                 })
 
+    # Missing personal-file docs (grouped under the personal file structure)
+        for group, doc_maps in MISSING_DOC_GROUPS.items():
+            for col, label in doc_maps:
+                if getattr(emp, col, False):
+                    missing_docs[group].append({
+                        "employee_id": emp.id, "name": emp.full_name, "file_code": emp.file_code,
+                        "doc": label, "group": group,
+                        "detail": f"missing {label}",
+                    })
+
     # Counters
     counts = {
         "birthdays": len(birthdays),
@@ -109,14 +144,15 @@ def smart_alerts(days: int = 30, db: Session = Depends(get_db), user=Depends(get
         "project_end": len(project_end),
         "probation_end": len(probation_end),
         "review_due": len(review_due),
+        "missing_docs": sum(len(v) for v in missing_docs.values()),
     }
 
-    sorted_ = lambda items: sorted(items, key=lambda x: x["days"])
+    sorted_ = lambda items: sorted(items, key=lambda x: x.get("days", 0))
     return {
         "as_of": today.isoformat(),
         "window_days": days,
         "counts": counts,
-        "total": sum(counts.values()),
+        "total": sum(counts.values()) + counts["missing_docs"],
         "alerts": {
             "birthdays": sorted_(birthdays),
             "anniversaries": sorted_(anniversaries),
@@ -124,5 +160,6 @@ def smart_alerts(days: int = 30, db: Session = Depends(get_db), user=Depends(get
             "project_end": sorted_(project_end),
             "probation_end": sorted_(probation_end),
             "review_due": sorted_(review_due),
+            "missing_docs": missing_docs,
         },
     }

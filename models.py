@@ -45,6 +45,7 @@ class Employee(Base):
     missing_end_of_contract_notice = Column(Boolean, default=False)
     photo_url = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
+    gender = Column(String, nullable=True)
 
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")

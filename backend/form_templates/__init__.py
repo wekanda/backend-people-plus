@@ -20,6 +20,8 @@ from .fuel_allowance import FUEL_ALLOWANCE
 from .condolence_benefit import CONDOLENCE_BENEFIT
 from .transport_claim import TRANSPORT_CLAIM
 from .staff_dependants import STAFF_DEPENDANTS
+from .airtime_allowance import AIRTIME_ALLOWANCE
+from .internet_allowance import INTERNET_ALLOWANCE
 
 __all__ = [
     "OFFER_LETTER",
@@ -44,4 +46,6 @@ __all__ = [
     "CONDOLENCE_BENEFIT",
     "TRANSPORT_CLAIM",
     "STAFF_DEPENDANTS",
+    "AIRTIME_ALLOWANCE",
+    "INTERNET_ALLOWANCE",
 ]

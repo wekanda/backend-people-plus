@@ -16,8 +16,14 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_employees = db.query(models.Employee).count()
-    active_employees = total_employees  # All employees are considered active
-    inactive_employees = 0
+
+    # Status-based counts: Active, On Recess/Recess, Inactive/Exited (and other statuses)
+    status_rows = db.query(models.Employee.status, func.count(models.Employee.id)).group_by(models.Employee.status).all()
+    status_counts = {(s or "Unknown"): c for s, c in status_rows}
+    active_employees = sum(c for s, c in status_counts.items() if s.lower() in ("active", "on duty", "probation"))
+    on_recess_count = sum(c for s, c in status_counts.items() if "recess" in s.lower())
+    exited_count = sum(c for s, c in status_counts.items() if s.lower() in ("inactive", "exited", "terminated", "left"))
+    inactive_employees = exited_count
 
     # Average tenure using date_of_appointment
     emp_dates = db.query(models.Employee.date_of_appointment).filter(models.Employee.date_of_appointment != None).all()
@@ -31,6 +37,26 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     project_counts = db.query(models.Employee.project, func.count(models.Employee.id)).group_by(models.Employee.project).all()
     departments = {d[0]: d[1] for d in project_counts if d[0]}
 
+    # Project performance - employees per project with active/recess/exited split
+    project_performance = {}
+    for proj, count in sorted(departments.items(), key=lambda kv: -kv[1]):
+        proj_rows = db.query(models.Employee.status, func.count(models.Employee.id)).filter(
+            models.Employee.project == proj).group_by(models.Employee.status).all()
+        by_status = {s or "Unknown": c for s, c in proj_rows}
+        project_performance[proj] = {
+            "staff": count,
+            "active": sum(c for s, c in by_status.items() if s.lower() in ("active", "on duty", "probation")),
+            "recess": sum(c for s, c in by_status.items() if "recess" in s.lower()),
+            "exited": sum(c for s, c in by_status.items() if s.lower() in ("inactive", "exited", "terminated", "left")),
+        }
+
+    # Gender breakdown
+    gender_rows = db.query(models.Employee.gender, func.count(models.Employee.id)).group_by(models.Employee.gender).all()
+    gender_breakdown = {}
+    for g, c in gender_rows:
+        key = (g or "").strip().title() or "Unspecified"
+        gender_breakdown[key] = gender_breakdown.get(key, 0) + c
+
     # Leave statistics
     approved_leaves = db.query(models.LeaveRequest).filter(models.LeaveRequest.status == "Approved").count()
     pending_leaves = db.query(models.LeaveRequest).filter(models.LeaveRequest.status == "Pending").count()
@@ -38,15 +64,19 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     # Turnover (employees hired - employees left in last year)
     one_year_ago = datetime.now(timezone.utc).date() - timedelta(days=365)
     hired = db.query(models.Employee).filter(models.Employee.date_of_appointment >= one_year_ago).count()
-    left = db.query(models.Employee).filter(models.Employee.status == "Inactive").count()
+    left = exited_count
     turnover_rate = (left / total_employees * 100) if total_employees > 0 else 0
 
     return {
         "total_employees": total_employees,
         "active_employees": active_employees,
+        "on_recess_count": on_recess_count,
+        "exited_count": exited_count,
         "inactive_employees": inactive_employees,
         "average_tenure_days": avg_tenure_days,
         "departments": departments,
+        "project_performance": project_performance,
+        "gender_breakdown": gender_breakdown,
         "approved_leaves": approved_leaves,
         "pending_leaves": pending_leaves,
         "hired_last_year": hired,

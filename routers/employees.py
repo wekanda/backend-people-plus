@@ -42,6 +42,7 @@ class EmployeeCreate(BaseModel):
     city: str | None = None
     country: str | None = None
     personal_email: str | None = None
+    gender: str | None = None
 
 class EmployeeUpdate(BaseModel):
     full_name: str | None = None
@@ -68,6 +69,7 @@ class EmployeeUpdate(BaseModel):
     city: str | None = None
     country: str | None = None
     personal_email: str | None = None
+    gender: str | None = None
 
 class EmployeeResponse(BaseModel):
     id: int
@@ -94,6 +96,7 @@ class EmployeeResponse(BaseModel):
     city: str | None = None
     country: str | None = None
     personal_email: str | None = None
+    gender: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 def resolve_or_create_employee_profile(current_user, db: Session):

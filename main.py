@@ -36,6 +36,7 @@ def _ensure_columns():
     """Add newly introduced columns to existing databases (works for SQLite & Postgres)."""
     stmts = [
         ("employees", "date_of_birth", "DATE"),
+        ("employees", "gender", "VARCHAR(16)"),
         ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
     ]
     with engine.connect() as conn:
