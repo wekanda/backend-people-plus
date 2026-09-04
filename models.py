@@ -46,6 +46,9 @@ class Employee(Base):
     photo_url = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
     gender = Column(String, nullable=True)
+    passport_photo_url = Column(String, nullable=True)
+    full_photo_url = Column(String, nullable=True)
+    unit = Column(String, nullable=True)
 
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")
@@ -88,6 +91,7 @@ class PerformanceAppraisal(Base):
     point_outs = Column(Text)
     appraisal_date = Column(Date)
     reviewer_id = Column(Integer, ForeignKey("users.id"))
+    score = Column(Float, nullable=True)
     employee = relationship("Employee", back_populates="appraisals")
 
 class Notification(Base):
@@ -468,4 +472,44 @@ class AuditLog(Base):
     object_type = Column(String)
     object_id = Column(String)
     details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
+class UserSignature(Base):
+    """Digital signature uploaded by admins, managers and staff for e-signing documents."""
+    __tablename__ = "user_signatures"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    signature_url = Column(String, nullable=True)
+    uploaded_at = Column(DateTime, default=utcnow)
+
+
+class HRStamp(Base):
+    """Official electronic HR / People & Culture stamp for authenticating documents."""
+    __tablename__ = "hr_stamps"
+    id = Column(Integer, primary_key=True, index=True)
+    stamp_url = Column(String, nullable=True)
+    label = Column(String, default="HR Official Stamp")
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    uploaded_at = Column(DateTime, default=utcnow)
+
+
+class MedicalInsuranceBeneficiary(Base):
+    """Medical insurance beneficiaries linked to staff records with an approval workflow."""
+    __tablename__ = "medical_insurance_beneficiaries"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), index=True)
+    full_name = Column(String)
+    relationship = Column(String, default="Self")
+    date_of_birth = Column(Date, nullable=True)
+    national_id = Column(String, nullable=True)
+    passport_photo_url = Column(String, nullable=True)
+    cover_type = Column(String, default="Inpatient & Outpatient")
+    policy_number = Column(String, nullable=True)
+    status = Column(String, default="draft")  # draft -> generated -> submitted -> approved
+    generated_at = Column(DateTime, nullable=True)
+    submitted_at = Column(DateTime, nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=utcnow)

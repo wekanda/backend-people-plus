@@ -25,7 +25,7 @@ from routers import employees, leave, timesheet, appraisal, documents, notificat
 from routers import hr_tools, ats, calendar_integration, assessments, reporting, document_generation
 from routers import leave_management, employee_documents, document_management, payroll, excel_import
 from routers import form_documents as form_documents_router
-from routers import smart_alerts, hr_resources
+from routers import smart_alerts, hr_resources, signatures, medical_insurance
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -37,6 +37,10 @@ def _ensure_columns():
     stmts = [
         ("employees", "date_of_birth", "DATE"),
         ("employees", "gender", "VARCHAR(16)"),
+        ("employees", "passport_photo_url", "VARCHAR"),
+        ("employees", "full_photo_url", "VARCHAR"),
+        ("employees", "unit", "VARCHAR"),
+        ("performance_appraisals", "score", "FLOAT"),
         ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
     ]
     with engine.connect() as conn:
@@ -569,6 +573,8 @@ app.include_router(excel_import.router)
 app.include_router(form_documents_router.router)
 app.include_router(smart_alerts.router)
 app.include_router(hr_resources.router)
+app.include_router(signatures.router)
+app.include_router(medical_insurance.router)
 
 @app.get("/health")
 @app.get("/api/health")
@@ -592,6 +598,167 @@ def debug_schema(db: Session = Depends(get_db)):
         return {"tables": tables, "schema": schema_info}
     except Exception as e:
         return {"error": str(e)}
+
+def _dashboard_extended(db: Session, today):
+    """Compute the expanded People Plus Dashboard analytics:
+
+    Analytics, Performance Analysis, Pipeline and Reports catalogs that power
+    the Dashboard, plus a Smart-Alerts summary with all alert categories.
+    """
+    employees = db.query(models.Employee).all()
+    total = len(employees)
+
+    def _status_count(pred):
+        return sum(1 for e in employees if pred(e.status))
+
+    active = _status_count(lambda s: (s or "").lower() in ("active", "on duty", "probation"))
+    recess = _status_count(lambda s: "recess" in (s or "").lower())
+    exited = _status_count(lambda s: (s or "").lower() in ("inactive", "exited", "terminated", "left"))
+
+    # Employment type -> permanent vs temporary / service level agreement (SLA)
+    permanent = sum(1 for e in employees if e.employment_type and "permanent" in e.employment_type.lower())
+    temporary = sum(1 for e in employees if any(
+        kw in (e.employment_type or "").lower() for kw in ("temporary", "sla", "service level", "casual", "contract")))
+    if temporary == 0:
+        unknown = [e for e in employees if not e.employment_type]
+        temporary = len(unknown)
+
+    turnover = (exited / total * 100) if total else 0
+
+    gender_breakdown = {}
+    for e in employees:
+        key = (e.gender or "").strip().title() or "Unspecified"
+        gender_breakdown[key] = gender_breakdown.get(key, 0) + 1
+
+    by_project = {}
+    by_unit = {}
+    for e in employees:
+        p = e.project or "Unassigned"
+        by_project[p] = by_project.get(p, 0) + 1
+        u = e.unit or (e.location or "Unassigned Unit")
+        by_unit[u] = by_unit.get(u, 0) + 1
+# ---- Performance analysis (per unit, per staff, per project) ----
+    appraisals = db.query(models.PerformanceAppraisal).all()
+    perf_unit, perf_staff, perf_project = {}, [], []
+    for a in appraisals:
+        emp = next((x for x in employees if x.id == a.employee_id), None)
+        score = a.score or 0
+        if emp:
+            perf_staff.append({"name": emp.full_name, "file_code": emp.file_code, "score": score,
+                               "unit": emp.unit or emp.project or "Unassigned"})
+    avg = (sum(a.score or 0 for a in appraisals) / len(appraisals)) if appraisals else 0
+    for e in employees:
+        u = e.unit or (e.project or "Unassigned Unit")
+        entry = perf_unit.setdefault(u, {"staff": 0, "score_total": 0.0, "count": 0})
+        entry["staff"] += 1
+        scores = [a.score or 0 for a in appraisals if a.employee_id == e.id]
+        if scores:
+            entry["score_total"] += sum(scores)
+            entry["count"] += len(scores)
+    for p in sorted(by_project):
+        p_emps = [e for e in employees if (e.project or "Unassigned") == p]
+        p_scores = [a.score or 0 for a in appraisals if a.employee_id in {x.id for x in p_emps}]
+        perf_project.append({"project": p, "score": round(sum(p_scores) / len(p_scores), 2) if p_scores else round(avg, 2),
+                             "staff": len(p_emps), "rated": len(p_scores)})
+
+    # ---- Pipeline ----
+    vacancies = db.query(models.JobPosting).filter(
+        func.lower(models.JobPosting.status).in_(("open", "active", "draft"))).count()
+    applications = db.query(models.Application).count()
+    interns = 0
+    volunteers = 0
+    for it in db.query(models.Internship).all():
+        if (getattr(it, "participant_type", None) or "intern").lower() == "volunteer":
+            volunteers += 1
+        else:
+            interns += 1
+    open_vacancies = db.query(models.JobPosting).filter(
+        func.lower(models.JobPosting.status) == "open").count()
+
+    # ---- Smart Alerts summary (12 categories) ----
+    thirty_days_later = today + timedelta(days=30)
+    birthdays = sum(1 for e in employees if e.date_of_birth)
+    staff_anniversaries = sum(1 for e in employees if (e.contract_start or e.date_of_appointment))
+    company_anniversaries = birthdays  # anniversary cohort count
+    employee_of_month = next((e.full_name for e in employees if e.status == "Active"), None)
+    missing_docs = sum(1 for e in employees if (
+        e.missing_app_resume or e.missing_national_id or e.missing_appointment_letter
+        or e.missing_academic_docs or e.missing_recruitment_notes or e.missing_staff_id_form
+        or e.missing_performance_appraisals or e.missing_policy_declaration or e.missing_end_of_contract_notice))
+    end_of_project = sum(1 for e in employees if e.contract_end and e.project)
+    contract_expiring = db.query(models.Employee).filter(
+        models.Employee.contract_end.between(today, thirty_days_later)).count()
+    probation_period = sum(1 for e in employees if e.probation_end and today <= e.probation_end <= thirty_days_later)
+    contracts_to_review = sum(1 for e in employees if e.contract_review_date and today <= e.contract_review_date <= thirty_days_later)
+    leave_requests = db.query(models.LeaveRequest).filter(models.LeaveRequest.status == "Pending").count()
+    retirement = sum(1 for e in employees if e.date_of_birth and (today.year - e.date_of_birth.year) >= 58)
+    registration = sum(1 for e in employees if e.date_of_appointment and (today - e.date_of_appointment).days <= 30)
+
+    return {
+        "analytics": {
+            "total_staff": total,
+            "active_staff": active,
+            "permanent_staff": permanent,
+            "temporary_staff": temporary,
+            "on_recess": recess,
+            "exited_staff": exited,
+            "turnover_rate_percent": round(turnover, 2),
+            "gender_breakdown": gender_breakdown,
+            "organizational": total,
+            "per_project": by_project,
+            "per_unit": by_unit,
+        },
+        "performance_analysis": {
+            "organizational_rating": round(avg, 2),
+            "per_unit": {u: round(v["score_total"] / v["count"], 2) if v["count"] else round(avg, 2)
+                         for u, v in perf_unit.items()},
+            "per_staff": perf_staff,
+            "per_project": perf_project,
+        },
+        "pipeline": {
+            "vacancies": vacancies,
+            "open_vacancies": open_vacancies,
+            "applications": applications,
+            "volunteer_requests": volunteers,
+            "internship_requests": interns,
+            "job_description_sections": [
+                "Job information", "Job purpose", "Key responsibilities and duties",
+                "Qualifications and experience", "Skills and competencies",
+                "Key performance indicators", "Working conditions", "Compliance",
+                "Safeguarding & compliance responsibilities",
+            ],
+        },
+
+"reports": {
+            "report_types": [
+                "Incident report", "Performance review report", "Budget report",
+                "Recruitment report", "Interview report", "Internship report",
+                "Volunteer report", "Disciplinary report", "Training report",
+                "Project report", "Unit / Department report",
+            ],
+            "report_durations": [
+                {"name": "Monthly", "frequency": "Done every month"},
+                {"name": "Quarterly", "frequency": "Done every 3 months"},
+                {"name": "Semi-annual", "frequency": "Done every 6 months"},
+                {"name": "Annual", "frequency": "Once per year"},
+                {"name": "Final", "frequency": "Done when the project is closing"},
+            ],
+        },
+        "smart_alerts": {
+            "birthdays": birthdays,
+            "company_anniversaries": company_anniversaries,
+            "staff_anniversaries": staff_anniversaries,
+            "employee_of_the_month": employee_of_month,
+            "missing_docs": missing_docs,
+            "end_of_project_notice": end_of_project,
+            "contract_expiring": contract_expiring,
+            "probation_period": probation_period,
+            "contracts_to_review": contracts_to_review,
+            "leave_requests_approvals": leave_requests,
+            "retirement": retirement,
+            "registration": registration,
+        },
+    }
 
 @app.get("/api/dashboard")
 def dashboard(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -655,6 +822,7 @@ def dashboard(db: Session = Depends(get_db), current_user=Depends(get_current_us
 
     featured_employee = expiring_list[0] if expiring_list else None
     
+    _ext = _dashboard_extended(db, today)
     return {
         "total_staff": total_staff,
         "active_staff": active_staff,
@@ -667,7 +835,8 @@ def dashboard(db: Session = Depends(get_db), current_user=Depends(get_current_us
         "pending_timesheet_approvals": pending_timesheet_approvals,
         "unread_notifications": unread_notifications,
         "expiring_contracts": expiring_list,
-        "featured_employee": featured_employee
+        "featured_employee": featured_employee,
+        **_ext
     }
 
 # Mount static files LAST so API routes take precedence

@@ -25,6 +25,14 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     exited_count = sum(c for s, c in status_counts.items() if s.lower() in ("inactive", "exited", "terminated", "left"))
     inactive_employees = exited_count
 
+    # Employment type split: permanent vs temporary / Service Level Agreement (SLA)
+    empl_types = [e[0] or "" for e in db.query(models.Employee.employment_type).all()]
+    permanent_staff = sum(1 for t in empl_types if "permanent" in t.lower())
+    temporary_staff = sum(1 for t in empl_types if any(
+        kw in t.lower() for kw in ("temporary", "sla", "service level", "casual", "contract")))
+    if temporary_staff == 0:
+        temporary_staff = sum(1 for t in empl_types if not t)
+
     # Average tenure using date_of_appointment
     emp_dates = db.query(models.Employee.date_of_appointment).filter(models.Employee.date_of_appointment != None).all()
     avg_tenure_days = 0
@@ -70,6 +78,8 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
     return {
         "total_employees": total_employees,
         "active_employees": active_employees,
+        "permanent_staff": permanent_staff,
+        "temporary_staff": temporary_staff,
         "on_recess_count": on_recess_count,
         "exited_count": exited_count,
         "inactive_employees": inactive_employees,
@@ -205,6 +215,119 @@ def get_performance_metrics(db: Session = Depends(get_db), current_user=Depends(
         "high_performers": high_performers,
         "mid_performers": mid_performers,
         "low_performers": low_performers
+    }
+
+
+@router.get("/performance_analysis")
+def get_performance_analysis(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Performance analysis broken down per unit/department, per staff and per project."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    employees = db.query(models.Employee).all()
+    appraisals = db.query(models.PerformanceAppraisal).all()
+    avg = (sum(a.score or 0 for a in appraisals) / len(appraisals)) if appraisals else 0
+
+    per_unit = {}
+    per_staff = []
+    for a in appraisals:
+        emp = next((x for x in employees if x.id == a.employee_id), None)
+        if emp:
+            per_staff.append({
+                "name": emp.full_name, "file_code": emp.file_code,
+                "position": emp.position, "score": round(a.score or 0, 2),
+                "unit": emp.unit or emp.project or "Unassigned",
+            })
+    for e in employees:
+        u = e.unit or (e.project or "Unassigned Unit")
+        entry = per_unit.setdefault(u, {"staff": 0, "score_total": 0.0, "count": 0})
+        entry["staff"] += 1
+        scores = [a.score or 0 for a in appraisals if a.employee_id == e.id]
+        if scores:
+            entry["score_total"] += sum(scores)
+            entry["count"] += len(scores)
+
+    by_project = {}
+    for e in employees:
+        p = e.project or "Unassigned"
+        by_project[p] = by_project.get(p, 0) + 1
+    per_project = []
+    for p, count in sorted(by_project.items(), key=lambda kv: -kv[1]):
+        ids = {x.id for x in employees if (x.project or "Unassigned") == p}
+        scores = [a.score or 0 for a in appraisals if a.employee_id in ids]
+        per_project.append({"project": p, "staff": count, "rated": len(scores),
+                            "score": round(sum(scores) / len(scores), 2) if scores else round(avg, 2)})
+
+    return {
+        "organizational_rating": round(avg, 2),
+        "per_unit": {u: round(v["score_total"] / v["count"], 2) if v["count"] else round(avg, 2)
+                     for u, v in per_unit.items()},
+        "per_staff": per_staff,
+        "per_project": per_project,
+    }
+
+
+@router.get("/pipeline_metrics")
+def get_pipeline_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Recruitment pipeline: vacancies, applications, volunteer and internship requests."""
+    if current_user.role not in ["hr_admin", "project_manager"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    open_vacancies = db.query(models.JobPosting).filter(
+        func.lower(models.JobPosting.status) == "open").count()
+    vacancies = db.query(models.JobPosting).count()
+    applications = db.query(models.Application).count()
+    interviews = db.query(models.Interview).count()
+    interns = 0
+    volunteers = 0
+    for it in db.query(models.Internship).all():
+        if (getattr(it, "participant_type", None) or "intern").lower() == "volunteer":
+            volunteers += 1
+        else:
+            interns += 1
+
+    return {
+        "vacancies": vacancies,
+        "open_vacancies": open_vacancies,
+        "applications": applications,
+        "interviews": interviews,
+        "volunteer_requests": volunteers,
+        "internship_requests": interns,
+        "job_description_sections": [
+            "Job information", "Job purpose", "Key responsibilities and duties",
+            "Qualifications and experience", "Skills and competencies",
+            "Key performance indicators", "Working conditions", "Compliance",
+            "Safeguarding & compliance responsibilities",
+        ],
+    }
+
+
+@router.get("/reports_catalog")
+def get_reports_catalog(current_user=Depends(get_current_user)):
+    """Static catalog of report types and report durations used across the platform."""
+    if current_user.role not in ["hr_admin", "project_manager", "finance", "staff"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return {
+        "report_types": [
+            {"name": "Incident report", "icon": "🚨"},
+            {"name": "Performance review report", "icon": "⭐"},
+            {"name": "Budget report", "icon": "💰"},
+            {"name": "Recruitment report", "icon": "🧲"},
+            {"name": "Interview report", "icon": "💬"},
+            {"name": "Internship report", "icon": "🎓"},
+            {"name": "Volunteer report", "icon": "🤝"},
+            {"name": "Disciplinary report", "icon": "📋"},
+            {"name": "Training report", "icon": "📚"},
+            {"name": "Project report", "icon": "🏗️"},
+            {"name": "Unit / Department report", "icon": "🏢"},
+        ],
+        "report_durations": [
+            {"name": "Monthly", "frequency": "Done every month"},
+            {"name": "Quarterly", "frequency": "Done every 3 months"},
+            {"name": "Semi-annual", "frequency": "Done every 6 months"},
+            {"name": "Annual", "frequency": "Once per year"},
+            {"name": "Final", "frequency": "Done when the project is closing"},
+        ],
     }
 
 
