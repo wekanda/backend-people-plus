@@ -430,11 +430,13 @@ class Payroll(Base):
 
 
 class CompanySettings(Base):
-    """Store company-level settings including logo."""
+    """Store company-level settings including logo and document letterhead."""
     __tablename__ = "company_settings"
     id = Column(Integer, primary_key=True, index=True)
     company_name = Column(String)
+    motto = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
+    header_url = Column(String, nullable=True)
     contact_email = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
     address = Column(String, nullable=True)

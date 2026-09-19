@@ -72,6 +72,17 @@ html, body { margin: 0; padding: 0; background: #fff; }
   letter-spacing: 2px;
   white-space: nowrap;
 }
+.doc-page .org-header {
+  border-bottom: 1.2pt solid #000;
+  padding: 0 0 4mm;
+  margin-bottom: 6mm;
+  text-align: center;
+}
+.doc-page .org-header .org-banner { width: 100%; }
+.doc-page .org-header .org-logo { max-height: 22mm; max-width: 70mm; margin: 0 auto 2mm; display: block; }
+.doc-page .org-header .org-name { font-size: 15pt; font-weight: 700; letter-spacing: 0.4px; }
+.doc-page .org-header .org-motto { font-size: 10.5pt; font-style: italic; color: #222; margin: 1mm 0; }
+.doc-page .org-header .org-contact { font-size: 9pt; color: #333; }
 @media print {
   body * { visibility: hidden; }
   .doc-page, .doc-page * { visibility: visible; }
@@ -245,8 +256,99 @@ def autofill_forms_from_employee(employee):
     return results
 
 
-def render_document_html(form, values=None):
-    """Render a document form dict (or key) to a complete A4 HTML page."""
+_DEFAULT_ORG_NAMES = {"", "tpo uganda", "tpo", "people plus", "peoplepluse", "people plus uganda"}
+
+
+def _is_default_org(name):
+    return (name or "").strip().lower() in _DEFAULT_ORG_NAMES
+
+
+def get_company_branding():
+    """Return the current organization branding (name, motto, logo, letterhead).
+
+    Reads the single CompanySettings row. Never raises - returns {} when the
+    database or the row is unavailable so document rendering never breaks.
+    """
+    try:
+        from database import SessionLocal
+        import models
+        db = SessionLocal()
+        try:
+            profile = db.query(models.CompanySettings).order_by(models.CompanySettings.id.desc()).first()
+        finally:
+            db.close()
+    except Exception:
+        return {}
+    if not profile:
+        return {}
+    return {
+        "company_name": (profile.company_name or "").strip(),
+        "motto": (profile.motto or "").strip(),
+        "logo_url": profile.logo_url or "",
+        "header_url": profile.header_url or "",
+        "contact_email": (profile.contact_email or "").strip(),
+        "contact_phone": (profile.contact_phone or "").strip(),
+        "address": (profile.address or "").strip(),
+        "country": profile.country or "",
+    }
+
+
+def _org_header_html(company):
+    """Build the official letterhead band (banner/logo + org name + contacts)."""
+    if not company:
+        return ""
+    parts = []
+    header_url = company.get("header_url") or ""
+    if header_url:
+        parts.append(f'<img class="org-banner" src="{esc(header_url)}" alt="organization header"/>')
+    logo_url = company.get("logo_url") or ""
+    if logo_url:
+        parts.append(f'<img class="org-logo" src="{esc(logo_url)}" alt="company logo"/>')
+    lines = []
+    name = company.get("company_name") or ""
+    if name:
+        lines.append(f'<div class="org-name">{esc(name)}</div>')
+    if company.get("motto"):
+        lines.append(f'<div class="org-motto">{esc(company["motto"])}</div>')
+    contact_bits = [company.get("address"), company.get("contact_phone"), company.get("contact_email")]
+    contact = "  |  ".join(str(b).strip() for b in contact_bits if str(b or "").strip())
+    country = (company.get("country") or "").strip()
+    if country and country.lower() not in name.lower():
+        contact = f"{country}  |  {contact}" if contact else country
+    if contact:
+        lines.append(f'<div class="org-contact">{esc(contact)}</div>')
+    if not parts and not lines:
+        return ""
+    return '<div class="org-header">\n' + "\n".join(parts + lines) + "\n</div>"
+
+
+def _rebrand_body(body, company_name):
+    """Swap the default 'TPO Uganda' wording in the generated document body for the
+    organization's own name so every org gets its identity on official documents.
+
+    When no organization name has been configured yet, 'TPO' is replaced with the
+    neutral "The Organization" so the default donor name never appears on documents.
+    """
+    name = (company_name or "").strip()
+    if name and not _is_default_org(name):
+        safe = esc(name)
+    else:
+        safe = "The Organization"
+    safe_apos = f"{safe}'s"
+    # Drop the country-specific heading; the letterhead band already carries the org name.
+    body = re.sub(r"<h1>\s*THE REPUBLIC OF UGANDA\s*</h1>", "", body, flags=re.IGNORECASE)
+    body = body.replace("TPO Uganda's", safe_apos).replace("TPO Uganda’s", safe_apos)
+    body = body.replace("TPO UGANDA", safe).replace("TPO Uganda", safe)
+    body = re.sub(r"\bTPO\b", safe, body)
+    return body
+
+
+def render_document_html(form, values=None, company=None):
+    """Render a document form dict (or key) to a complete A4 HTML page.
+
+    When `company` is omitted the current Organization Settings are loaded, so the
+    organization logo + letterhead automatically appear on every generated document.
+    """
     if isinstance(form, str):
         form = get_form(form)
     if form is None:
@@ -285,6 +387,9 @@ def render_document_html(form, values=None):
             except Exception:
                 ctx[f"{base}_balance"] = ""
     body = _apply_template(form["template"], ctx)
+    branding = dict(company or {}) if company else get_company_branding()
+    org_header = _org_header_html(branding)
+    body = _rebrand_body(body, (branding or {}).get("company_name", ""))
     title = esc(form.get("name", "Document"))
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -295,6 +400,7 @@ def render_document_html(form, values=None):
 </head>
 <body>
 <div class="doc-page">
+{org_header}
 {body}
 </div>
 </body>

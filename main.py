@@ -42,6 +42,8 @@ def _ensure_columns():
         ("employees", "unit", "VARCHAR"),
         ("performance_appraisals", "score", "FLOAT"),
         ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
+        ("company_settings", "motto", "VARCHAR"),
+        ("company_settings", "header_url", "VARCHAR"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in stmts:
@@ -840,6 +842,12 @@ def dashboard(db: Session = Depends(get_db), current_user=Depends(get_current_us
     }
 
 # Mount static files LAST so API routes take precedence
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+try:
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+except Exception as e:
+    print(f"Warning: Could not mount uploads dir: {e}")
+
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 try:
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
