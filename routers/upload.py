@@ -79,7 +79,7 @@ BOOL_KEYS = {
 @router.post("/excel")
 async def upload_excel(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
-        if current_user.role != "hr_admin":
+        if current_user.role not in ("hr_admin", "it_officer"):
             raise HTTPException(status_code=403, detail="Only HR admin can upload")
 
         if not file.filename.endswith(('.xlsx', '.xls')):
@@ -265,7 +265,7 @@ def _map_docx_data(field_map):
 @router.post("/word")
 async def upload_word(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
-        if current_user.role != "hr_admin":
+        if current_user.role not in ("hr_admin", "it_officer"):
             raise HTTPException(status_code=403, detail="Only HR admin can upload Word documents")
 
         if not file.filename.lower().endswith('.docx'):
@@ -306,7 +306,7 @@ async def upload_word(file: UploadFile = File(...), db: Session = Depends(get_db
 async def upload_payslips_excel(file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Import payslips from an Excel file. Expected headers: file_code or employee_id, period_start, period_end, gross_pay, tax, deductions, pdf_url (optional)"""
     try:
-        if current_user.role not in ("hr_admin", "project_manager"):
+        if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
             raise HTTPException(status_code=403, detail="Insufficient permissions to upload payslips")
 
         if not file.filename.endswith(('.xlsx', '.xls')):

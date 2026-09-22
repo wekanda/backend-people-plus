@@ -115,7 +115,7 @@ def get_timesheet_summary(employee_id: int, db: Session = Depends(get_db), curre
 
 @router.put("/{timesheet_id}/approve")
 def approve_timesheet(timesheet_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     ts = db.query(models.Timesheet).filter(models.Timesheet.id == timesheet_id).first()
     if not ts:

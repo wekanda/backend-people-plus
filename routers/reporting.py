@@ -12,7 +12,7 @@ router = APIRouter(prefix="/reporting", tags=["reporting"])
 @router.get("/hr_metrics")
 def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get HR analytics and metrics."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_employees = db.query(models.Employee).count()
@@ -98,7 +98,7 @@ def get_hr_metrics(db: Session = Depends(get_db), current_user=Depends(get_curre
 @router.get("/recruitment_metrics")
 def get_recruitment_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get recruitment pipeline metrics."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_applications = db.query(models.Application).count()
@@ -132,7 +132,7 @@ def get_recruitment_metrics(db: Session = Depends(get_db), current_user=Depends(
 @router.get("/payroll_metrics")
 def get_payroll_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get payroll analytics."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_payslips = db.query(models.Payslip).count()
@@ -168,7 +168,7 @@ def get_payroll_metrics(db: Session = Depends(get_db), current_user=Depends(get_
 @router.get("/timesheet_metrics")
 def get_timesheet_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get timesheet and hours analytics."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_timesheets = db.query(models.Timesheet).count()
@@ -194,7 +194,7 @@ def get_timesheet_metrics(db: Session = Depends(get_db), current_user=Depends(ge
 @router.get("/performance_metrics")
 def get_performance_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get performance appraisal analytics."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     total_appraisals = db.query(models.PerformanceAppraisal).count()
@@ -221,7 +221,7 @@ def get_performance_metrics(db: Session = Depends(get_db), current_user=Depends(
 @router.get("/performance_analysis")
 def get_performance_analysis(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Performance analysis broken down per unit/department, per staff and per project."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     employees = db.query(models.Employee).all()
@@ -270,7 +270,7 @@ def get_performance_analysis(db: Session = Depends(get_db), current_user=Depends
 @router.get("/pipeline_metrics")
 def get_pipeline_metrics(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Recruitment pipeline: vacancies, applications, volunteer and internship requests."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     open_vacancies = db.query(models.JobPosting).filter(
@@ -305,7 +305,7 @@ def get_pipeline_metrics(db: Session = Depends(get_db), current_user=Depends(get
 @router.get("/reports_catalog")
 def get_reports_catalog(current_user=Depends(get_current_user)):
     """Static catalog of report types and report durations used across the platform."""
-    if current_user.role not in ["hr_admin", "project_manager", "finance", "staff"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "staff"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     return {
         "report_types": [
@@ -334,7 +334,7 @@ def get_reports_catalog(current_user=Depends(get_current_user)):
 @router.get("/export_dashboard_summary")
 def export_dashboard_summary(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Export all key metrics as a single summary for dashboard."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Return simple test data for now  

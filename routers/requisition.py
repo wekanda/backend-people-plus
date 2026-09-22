@@ -11,7 +11,7 @@ router = APIRouter(prefix="/requisitions", tags=["requisitions"])
 @router.post("")
 def create_requisition(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Only HR admins and project managers may create requisitions
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to create requisitions")
 
     req = models.Requisition(
@@ -47,7 +47,7 @@ def get_requisition(req_id: int, db: Session = Depends(get_db), current_user=Dep
     if not req:
         raise HTTPException(status_code=404, detail="Requisition not found")
     # permission check
-    if current_user.role not in ("hr_admin", "project_manager") and req.requested_by != current_user.id:
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant") and req.requested_by != current_user.id:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     return req
 
@@ -55,7 +55,7 @@ def get_requisition(req_id: int, db: Session = Depends(get_db), current_user=Dep
 @router.post("/{req_id}/action")
 def action_requisition(req_id: int, payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # payload: { action: 'approve'|'reject', note: '...'}
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to act on requisitions")
     req = db.query(models.Requisition).filter(models.Requisition.id == req_id).first()
     if not req:

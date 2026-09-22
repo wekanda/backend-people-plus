@@ -23,7 +23,7 @@ router = APIRouter(prefix="/ats", tags=["ats"])
 @router.post('/applicants')
 def create_applicant(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Restrict applicant creation to HR and project managers
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to create applicants')
 
     a = models.Applicant(
@@ -144,7 +144,7 @@ def convert_to_employee(app_id: int, payload: dict, db: Session = Depends(get_db
 @router.post('/applications/{app_id}/upload_resume')
 def upload_resume(app_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # store file to /static/uploads/ and save URL (simple implementation)
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to upload resumes')
     content = file.file.read()
     filename = f"resume_{app_id}_{int(datetime.now(timezone.utc).timestamp())}_{file.filename}"
@@ -290,7 +290,7 @@ def create_invite(app_id: int, payload: dict, db: Session = Depends(get_db), cur
 @router.post('/assessments/score')
 def score_assessment(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # payload: { application_id, name, answers: {q1: 'a', q2:'b'}, key: {q1:'a', q2:'c'} }
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to score assessments')
     answers = payload.get('answers', {})
     key = payload.get('key', {})
@@ -310,7 +310,7 @@ def score_assessment(payload: dict, db: Session = Depends(get_db), current_user=
 @router.get('/pipeline')
 def pipeline(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Return applications grouped by latest stage
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to view pipeline')
 
     apps = db.query(models.Application).all()

@@ -445,6 +445,27 @@ class CompanySettings(Base):
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
+class Subscription(Base):
+    """Organization subscription plan (quarterly / yearly).
+
+    Payment & billing will be activated once the app is fully built; this row
+    stores the plan and status so activation is ready to switch on.
+    """
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    plan = Column(String, default="yearly")          # quarterly | yearly
+    status = Column(String, default="inactive")      # inactive | trial | active | expired
+    amount = Column(Float, nullable=True)            # subscription price
+    currency = Column(String, default="UGX")         # UGX | USD | ...
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    trial_end_date = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    auto_renew = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=utcnow)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
 
 class BackgroundCheck(Base):
     __tablename__ = "background_checks"

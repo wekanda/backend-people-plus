@@ -66,6 +66,20 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 
 # ==================== PHASE 1: ROLE-BASED ACCESS CONTROL ====================
+ROLE_GROUPS = {
+    "it_officer": ("hr_admin",),
+    "ceo": ("project_manager",),
+    "ceo_assistant": ("project_manager",),
+}
+
+
+def user_role_matches(user_role, allowed_roles):
+    """True when `user_role` is listed in `allowed_roles` OR belongs to a role
+    group that is (e.g. it_officer passes any check that allows hr_admin)."""
+    if user_role in allowed_roles:
+        return True
+    return any(g in allowed_roles for g in ROLE_GROUPS.get(user_role, ()))
+
 
 def require_role(*allowed_roles: str):
     """Decorator to enforce role-based access control.
@@ -78,7 +92,7 @@ def require_role(*allowed_roles: str):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, current_user: models.User = Depends(get_current_user), **kwargs):
-            if current_user.role not in allowed_roles:
+            if not user_role_matches(current_user.role, allowed_roles):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Access denied. Required role(s): {', '.join(allowed_roles)}"
@@ -93,6 +107,7 @@ def require_role(*allowed_roles: str):
 def check_role(current_user: models.User, *required_roles: str) -> bool:
     """Check if user has one of the required roles."""
     return current_user.role in required_roles
+    return user_role_matches(current_user.role, required_roles)
 
 
 def check_permission(current_user: models.User, permission: str) -> bool:
@@ -122,7 +137,9 @@ def check_permission(current_user: models.User, permission: str) -> bool:
         ]
     }
     
-    role_permissions = permissions.get(current_user.role, [])
+    role_permissions = set(permissions.get(current_user.role, []))
+    for _grp in ROLE_GROUPS.get(current_user.role, ()):
+        role_permissions |= set(permissions.get(_grp, []))
     return permission in role_permissions
 
 
@@ -134,10 +151,10 @@ def check_employee_access(current_user: models.User, employee_id: int, db: Sessi
     - project_manager: can access their team members
     - staff: can access only themselves
     """
-    if current_user.role == "hr_admin":
+    if current_user.role == "hr_admin" or "hr_admin" in ROLE_GROUPS.get(current_user.role, ()):
         return True
     
-    if current_user.role == "project_manager":
+    if current_user.role == "project_manager" or "project_manager" in ROLE_GROUPS.get(current_user.role, ()):
         # Check if employee is in their team
         employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
         if employee and current_user.employee_id and \

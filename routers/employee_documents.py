@@ -156,9 +156,9 @@ async def upload_employee_document(
         expiry_date=expiry_date,
         is_expired=False,
         notes=notes,
-        approved=current_user.role == "hr_admin",  # Auto-approve HR Admin uploads
-        approved_by=current_user.id if current_user.role == "hr_admin" else None,
-        approved_at=datetime.now(timezone.utc) if current_user.role == "hr_admin" else None
+        approved=current_user.role in ("hr_admin", "it_officer"),  # Auto-approve HR Admin uploads
+        approved_by=current_user.id if current_user.role in ("hr_admin", "it_officer") else None,
+        approved_at=datetime.now(timezone.utc) if current_user.role in ("hr_admin", "it_officer") else None
     )
     
     db.add(db_document)
@@ -205,7 +205,7 @@ async def approve_document(
     db: Session = Depends(get_db)
 ):
     """Approve a document (HR Admin or P&C Manager only)."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR Admin or managers can approve documents"
@@ -245,7 +245,7 @@ async def delete_document(
     db: Session = Depends(get_db)
 ):
     """Delete a document (HR Admin only)."""
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR Admin can delete documents"

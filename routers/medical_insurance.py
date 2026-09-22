@@ -37,7 +37,7 @@ def _detail(ben: models.MedicalInsuranceBeneficiary, db: Session) -> dict:
 @router.get("/beneficiaries")
 def list_beneficiaries(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """List all medical insurance beneficiaries (HR / Finance / Pay)."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     items = db.query(models.MedicalInsuranceBeneficiary).order_by(models.MedicalInsuranceBeneficiary.id.desc()).all()
     return [_detail(b, db) for b in items]
@@ -46,7 +46,7 @@ def list_beneficiaries(db: Session = Depends(get_db), current_user=Depends(get_c
 @router.get("/state")
 def insurance_state(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Workflow state summary: drafts, generated, submitted, approved."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     rows = db.query(models.MedicalInsuranceBeneficiary.status).all()
     counts = {"draft": 0, "generated": 0, "submitted": 0, "approved": 0}
@@ -58,7 +58,7 @@ def insurance_state(db: Session = Depends(get_db), current_user=Depends(get_curr
 @router.post("/beneficiaries")
 def populate_beneficiary(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Populate a medical insurance beneficiary from staff information."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     employee_id = payload.get("employee_id")
@@ -84,7 +84,7 @@ def populate_beneficiary(payload: dict, db: Session = Depends(get_db), current_u
 @router.post("/beneficiaries/{ben_id}/generate")
 def generate_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Generate the medical insurance record (draft -> generated)."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ben = db.query(models.MedicalInsuranceBeneficiary).filter(models.MedicalInsuranceBeneficiary.id == ben_id).first()
     if not ben:
@@ -101,7 +101,7 @@ def generate_beneficiary(ben_id: int, db: Session = Depends(get_db), current_use
 @router.post("/beneficiaries/{ben_id}/submit")
 def submit_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Submit generated medical insurance records for approval."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ben = db.query(models.MedicalInsuranceBeneficiary).filter(models.MedicalInsuranceBeneficiary.id == ben_id).first()
     if not ben:
@@ -118,7 +118,7 @@ def submit_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=
 @router.post("/beneficiaries/{ben_id}/approve")
 def approve_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Approve a submitted medical insurance beneficiary."""
-    if current_user.role not in ("hr_admin", "finance"):
+    if current_user.role not in ("hr_admin", "it_officer", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ben = db.query(models.MedicalInsuranceBeneficiary).filter(models.MedicalInsuranceBeneficiary.id == ben_id).first()
     if not ben:
@@ -136,7 +136,7 @@ def approve_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user
 @router.post("/beneficiaries/{ben_id}/reset")
 def reset_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Reset a beneficiary to draft for rework."""
-    if current_user.role not in ("hr_admin", "project_manager", "finance", "pay"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "pay"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ben = db.query(models.MedicalInsuranceBeneficiary).filter(models.MedicalInsuranceBeneficiary.id == ben_id).first()
     if not ben:
@@ -154,7 +154,7 @@ def reset_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=D
 @router.delete("/beneficiaries/{ben_id}")
 def delete_beneficiary(ben_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Delete a draft beneficiary record."""
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ben = db.query(models.MedicalInsuranceBeneficiary).filter(models.MedicalInsuranceBeneficiary.id == ben_id).first()
     if not ben:

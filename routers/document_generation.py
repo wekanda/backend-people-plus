@@ -60,7 +60,7 @@ def get_document_policies(current_user=Depends(get_current_user)):
 @router.post('/policies')
 def set_document_policies(payload: dict, current_user=Depends(get_current_user)):
     """Persist document policies. Only `hr_admin` may update policies."""
-    if current_user.role != 'hr_admin':
+    if current_user.role not in ('hr_admin', 'it_officer'):
         raise HTTPException(status_code=403, detail='Only hr_admin may update policies')
     repo_root = Path(__file__).resolve().parents[2]
     uploads = repo_root / 'uploads'
@@ -281,7 +281,7 @@ People Plus HR Systems
 @router.post("/generate")
 def generate_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Generate a document from template (appointment letter, contract, offer letter, etc.)"""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     template_type = payload.get("template_type", "").lower()
@@ -374,7 +374,7 @@ def _render_pdf_from_text(text: str) -> io.BytesIO:
 @router.post("/generate-docx")
 def generate_document_docx(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Generate a Word document from template data."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     template_type = payload.get("template_type", "").lower()
@@ -475,7 +475,7 @@ def fill_leave_application_template(payload: dict, db: Session = Depends(get_db)
 @router.post("/generate-pdf")
 def generate_document_pdf(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Generate a PDF document from template data."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     template_type = payload.get("template_type", "").lower()
@@ -522,7 +522,7 @@ def generate_document_pdf(payload: dict, db: Session = Depends(get_db), current_
 
 @router.post("/send")
 def send_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     template_type = payload.get("template_type", "").lower()
@@ -608,7 +608,7 @@ def send_document(payload: dict, db: Session = Depends(get_db), current_user=Dep
 @router.get("/templates")
 def list_available_templates(current_user=Depends(get_current_user)):
     """List all available document templates"""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     return {
@@ -627,7 +627,7 @@ def list_available_templates(current_user=Depends(get_current_user)):
 def list_document_files(current_user=Depends(get_current_user)):
     """List all files under the repository `documents` folder (docx/xlsx/pdf).
     Returns relative paths so the frontend can request downloads."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions to list documents")
 
     base = _resolve_documents_base()
@@ -648,7 +648,7 @@ def list_document_files(current_user=Depends(get_current_user)):
 @router.get("/files/download")
 def download_document_file(file_path: str, current_user=Depends(get_current_user)):
     """Download a file from the `documents` folder. Protects against path traversal."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions to download documents")
 
     if not file_path:
@@ -666,7 +666,7 @@ def download_document_file(file_path: str, current_user=Depends(get_current_user
 @router.get("/sent")
 def list_sent_documents(current_user=Depends(get_current_user)):
     """List all generated/sent documents from the sent_documents folder."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions to list sent documents")
 
     base = _resolve_documents_base(subpath="sent_documents")
@@ -687,7 +687,7 @@ def list_sent_documents(current_user=Depends(get_current_user)):
 @router.get("/sent/download")
 def download_sent_document(file_path: str, current_user=Depends(get_current_user)):
     """Download a sent/generated document from the sent_documents folder."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions to download sent documents")
 
     if not file_path:

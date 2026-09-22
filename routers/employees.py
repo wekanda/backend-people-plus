@@ -215,7 +215,7 @@ def update_employee(employee_id: int, employee: EmployeeUpdate, db: Session = De
     db_employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
-    if current_user.role != "hr_admin" and current_user.employee_id != employee_id:
+    if current_user.role not in ("hr_admin", "it_officer") and current_user.employee_id != employee_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     valid_cols = set(models.Employee.__table__.columns.keys())

@@ -32,7 +32,7 @@ async def get_employee_payroll(
     if current_user.role == "staff":
         if current_user.employee_id != employee_id:
             raise HTTPException(status_code=403, detail="Not authorized")
-    elif current_user.role not in ["hr_admin", "project_manager", "finance"]:
+    elif current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     payrolls = db.query(models.Payroll).filter(
@@ -53,7 +53,7 @@ async def generate_payroll(
     db: Session = Depends(get_db)
 ):
     """Generate payroll for an employee for a specific period."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Only HR/Finance can generate payroll")
 
     if payload is not None:
@@ -122,7 +122,7 @@ async def list_payroll(
     db: Session = Depends(get_db)
 ):
     """List all payroll records (paginated)."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     query = db.query(models.Payroll)
@@ -159,7 +159,7 @@ async def approve_payroll(
     db: Session = Depends(get_db)
 ):
     """Approve payroll (Finance/HR only)."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     payroll = db.get(models.Payroll, payroll_id)
@@ -184,7 +184,7 @@ async def submit_payroll(
     db: Session = Depends(get_db)
 ):
     """Submit payroll for approval."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     payroll = db.get(models.Payroll, payroll_id)
@@ -209,7 +209,7 @@ async def mark_payroll_paid(
     db: Session = Depends(get_db)
 ):
     """Mark payroll as paid."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     payroll = db.get(models.Payroll, payroll_id)
@@ -233,7 +233,7 @@ async def get_payroll_statistics(
     db: Session = Depends(get_db)
 ):
     """Get payroll statistics (HR/Finance only)."""
-    if current_user.role not in ["hr_admin", "finance"]:
+    if current_user.role not in ["hr_admin", "it_officer", "finance"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     # Get current month's payroll

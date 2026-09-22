@@ -30,7 +30,7 @@ class AppraisalResponse(BaseModel):
 
 @router.post("/create", response_model=AppraisalResponse)
 def create_appraisal(appraisal: AppraisalCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to create appraisals")
 
     db_appraisal = models.PerformanceAppraisal(
@@ -51,7 +51,7 @@ def get_employee_appraisals(employee_id: int, db: Session = Depends(get_db), cur
 
 @router.get("/", response_model=List[AppraisalResponse])
 def list_appraisals(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to list appraisals")
     return db.query(models.PerformanceAppraisal).order_by(models.PerformanceAppraisal.appraisal_date.desc()).offset(skip).limit(limit).all()
 

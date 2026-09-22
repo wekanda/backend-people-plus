@@ -58,7 +58,7 @@ async def import_employees_from_file(
     - contract_start
     - contract_end
     """
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admins can import employees")
 
     try:
@@ -188,7 +188,7 @@ async def import_employees_from_workspace_folder(
     db: Session = Depends(get_db),
 ):
     """Import all Excel files from the workspace excel folder into the database."""
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admins can import employees")
 
     workspace_root = Path(__file__).resolve().parent.parent
@@ -319,7 +319,7 @@ async def get_employee_import_template(current_user: models.User = Depends(get_c
     """
     Get an Excel template for employee import.
     """
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admins can access templates")
 
     workbook = openpyxl.Workbook()

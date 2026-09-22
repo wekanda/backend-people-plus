@@ -26,6 +26,7 @@ from routers import hr_tools, ats, calendar_integration, assessments, reporting,
 from routers import leave_management, employee_documents, document_management, payroll, excel_import
 from routers import form_documents as form_documents_router
 from routers import smart_alerts, hr_resources, signatures, medical_insurance
+from routers import subscriptions
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -107,6 +108,24 @@ def initialize_seed_users():
             "password": "LiveAdmin123!",
             "full_name": "Live Admin",
             "role": "hr_admin"
+        },
+        {
+            "email": "it_officer@peoplepluse.com",
+            "password": "ItOfficer123!",
+            "full_name": "IT Officer",
+            "role": "it_officer"
+        },
+        {
+            "email": "ceo@peoplepluse.com",
+            "password": "CeoView123!",
+            "full_name": "Chief Executive Officer",
+            "role": "ceo"
+        },
+        {
+            "email": "ceo_assistant@peoplepluse.com",
+            "password": "CeoAsst123!",
+            "full_name": "CEO Assistant",
+            "role": "ceo_assistant"
         }
     ]
 
@@ -577,6 +596,7 @@ app.include_router(smart_alerts.router)
 app.include_router(hr_resources.router)
 app.include_router(signatures.router)
 app.include_router(medical_insurance.router)
+app.include_router(subscriptions.router)
 
 @app.get("/health")
 @app.get("/api/health")

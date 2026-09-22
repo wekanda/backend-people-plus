@@ -62,7 +62,7 @@ async def create_document_type(
     db: Session = Depends(get_db)
 ):
     """Create a new document type (Admin only)."""
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Admin access required")
     
     doc_type = models.DocumentType(
@@ -92,7 +92,7 @@ async def upload_document(
         raise HTTPException(status_code=404, detail="Employee not found")
     
     # Check permissions
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         if current_user.employee_id != employee_id:
             raise HTTPException(status_code=403, detail="Not authorized")
     
@@ -163,7 +163,7 @@ async def approve_document(
     db: Session = Depends(get_db)
 ):
     """Approve a document (HR/Manager only)."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     doc = db.get(models.EmployeeDocument, doc_id)
@@ -297,7 +297,7 @@ async def get_document_audit_trail(
     db: Session = Depends(get_db)
 ):
     """Get audit trail for employee documents."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     
     audits = db.query(models.DocumentAudit).join(

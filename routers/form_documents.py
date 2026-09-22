@@ -15,7 +15,7 @@ from backend import form_documents
 
 router = APIRouter(prefix="/api/form-documents", tags=["form-documents"])
 
-ALLOWED_ROLES = ["hr_admin", "project_manager", "staff", "finance"]
+ALLOWED_ROLES = ["hr_admin", "project_manager", "staff", "finance", "it_officer", "ceo", "ceo_assistant"]
 
 
 def _check_role(user):
@@ -61,7 +61,7 @@ def delete_saved_form(saved_id: int, db: Session = Depends(get_db), user=Depends
     row = db.query(models.SavedForm).filter(models.SavedForm.id == saved_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Saved form not found")
-    if row.created_by != user.id and user.role != "hr_admin":
+    if row.created_by != user.id and user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Cannot delete another user's saved form")
     db.delete(row)
     db.commit()
@@ -119,7 +119,7 @@ def download_form_document(key: str, payload: dict, user=Depends(get_current_use
 async def excel_autofill(file: UploadFile = File(...), user=Depends(get_current_user)):
     """Upload an Excel file; its columns are mapped onto every document form (HR Admin)."""
     _check_role(user)
-    if user.role != "hr_admin":
+    if user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admin can autofill document templates")
     data = await file.read()
     if not data:
@@ -137,7 +137,7 @@ async def excel_autofill(file: UploadFile = File(...), user=Depends(get_current_
 def employee_autofill(employee_id: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Auto-populate all document forms from an employee record (HR Admin)."""
     _check_role(user)
-    if user.role != "hr_admin":
+    if user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admin can generate documents from employee records")
     employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not employee:
@@ -159,7 +159,7 @@ def employee_autofill(employee_id: int, db: Session = Depends(get_db), user=Depe
 async def download_excel_template(user=Depends(get_current_user)):
     """Return a reusable Excel template whose headers match the form fields (HR Admin)."""
     _check_role(user)
-    if user.role != "hr_admin":
+    if user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admin can download the Excel field template")
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment

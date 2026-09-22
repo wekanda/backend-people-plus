@@ -39,7 +39,7 @@ def _resolve_employee_id(current_user, db: Session):
 @router.post("/payslips/generate")
 def generate_payslip(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # basic permission check
-    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     employee_id = payload.get('employee_id')
@@ -75,7 +75,7 @@ def list_payslips(employee_id: int = None, db: Session = Depends(get_db), curren
 
     if resolved_employee_id:
         query = query.filter(models.Payslip.employee_id == resolved_employee_id)
-    elif current_user.role not in ("hr_admin", "pay", "finance"):
+    elif current_user.role not in ("hr_admin", "it_officer", "pay", "finance"):
         return []
 
     return query.order_by(models.Payslip.period_end.desc(), models.Payslip.id.desc()).all()
@@ -83,7 +83,7 @@ def list_payslips(employee_id: int = None, db: Session = Depends(get_db), curren
 
 @router.get('/reports/payslips_summary')
 def payslips_summary(start: str = None, end: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     q = db.query(
@@ -110,7 +110,7 @@ def payslips_summary(start: str = None, end: str = None, db: Session = Depends(g
 
 @router.get('/reports/payslips_csv')
 def payslips_csv(start: str = None, end: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ("hr_admin", "project_manager", "pay", "finance"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "pay", "finance"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     query = db.query(models.Payslip)

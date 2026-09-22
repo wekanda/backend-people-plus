@@ -37,7 +37,7 @@ async def upload_doc(employee_id: int, document_type: str, file: UploadFile = Fi
         raise HTTPException(status_code=403, detail="Staff can only upload documents for themselves")
     if current_user.role == "project_manager" and not check_employee_access(current_user, employee_id, db):
         raise HTTPException(status_code=403, detail="Insufficient permissions to upload documents for this employee")
-    if current_user.role not in ("staff", "hr_admin", "project_manager"):
+    if current_user.role not in ("staff", "hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to upload documents")
 
     upload_root = Path("uploads")
@@ -57,7 +57,7 @@ async def upload_doc(employee_id: int, document_type: str, file: UploadFile = Fi
 
 @router.post("/word-documents/bulk-upload")
 async def bulk_upload_word_documents(files: List[UploadFile] = File(...), db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+    if current_user.role not in {"hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "staff", "finance"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions to upload Word documents")
 
     if not files:
@@ -87,7 +87,7 @@ async def bulk_upload_word_documents(files: List[UploadFile] = File(...), db: Se
 
 @router.get("/word-documents")
 def list_word_documents(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+    if current_user.role not in {"hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "staff", "finance"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions to list Word documents")
 
     documents = []
@@ -99,7 +99,7 @@ def list_word_documents(db: Session = Depends(get_db), current_user=Depends(get_
 
 @router.get("/word-documents/download")
 def download_word_document(file_name: str, current_user=Depends(get_current_user)):
-    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+    if current_user.role not in {"hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "staff", "finance"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions to download Word documents")
 
     target = WORD_DOCS_DIR / file_name
@@ -110,7 +110,7 @@ def download_word_document(file_name: str, current_user=Depends(get_current_user
 
 @router.post("/word-documents/send")
 def send_word_document(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in {"hr_admin", "project_manager", "staff", "finance"}:
+    if current_user.role not in {"hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "staff", "finance"}:
         raise HTTPException(status_code=403, detail="Insufficient permissions to send Word documents")
 
     document_name = payload.get("document_name") or "Unknown document"

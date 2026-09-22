@@ -70,7 +70,7 @@ def get_hr_stamp(db: Session = Depends(get_db), current_user=Depends(get_current
 @router.post("/hr-stamp")
 async def upload_hr_stamp(file: UploadFile = File(...), label: str = "HR Official Stamp", db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Upload the official electronic HR / People & Culture stamp (HR admin only)."""
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(status_code=403, detail="Only HR Admin may upload the official stamp")
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")

@@ -24,14 +24,14 @@ def add_to_talent_pool(payload: dict, db: Session = Depends(get_db), current_use
 
 @router.get('/talent_pool')
 def list_talent_pool(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin','project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer','project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403)
     return db.query(models.Applicant).filter(models.Applicant.source=='talent_pool').all()
 
 
 @router.get('/referrals')
 def list_referrals(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin','project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer','project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403)
     return db.query(models.Applicant).filter(models.Applicant.source=='referral').all()
 
@@ -228,14 +228,14 @@ def create_onboarding_checklist(payload: dict, db: Session = Depends(get_db), cu
 
 @router.get('/internships')
 def list_internships_admin(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin','project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer','project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403)
     return db.query(models.Internship).all()
 
 
 @router.get('/offers')
 def list_offers(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin','project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer','project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403)
     return db.query(models.Offer).all()
 
@@ -261,7 +261,7 @@ def request_offer_signature(payload: dict, db: Session = Depends(get_db), curren
 
 @router.get('/background_checks')
 def list_background_checks(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin','project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer','project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403)
     return db.query(models.BackgroundCheck).all()
 
@@ -298,7 +298,7 @@ def record_consent(payload: dict, db: Session = Depends(get_db), current_user=De
 
 @router.get('/audit_log')
 def get_audit_log(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ('hr_admin',):
+    if current_user.role not in ('hr_admin', 'it_officer',):
         raise HTTPException(status_code=403, detail='Only HR Admins can view audit logs')
     # Return recent audit entries
     return db.query(models.AuditLog).order_by(models.AuditLog.created_at.desc()).limit(100).all()
@@ -334,7 +334,7 @@ def scan_contract_expiry_and_create_notifications(db: Session = Depends(get_db),
 @router.get('/onboarding')
 def list_onboarding_checklists(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get all active onboarding checklists."""
-    if current_user.role not in ['hr_admin', 'project_manager']:
+    if current_user.role not in ['hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant']:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     checklists = db.query(models.OnboardingChecklist).filter(
@@ -362,7 +362,7 @@ def list_onboarding_checklists(db: Session = Depends(get_db), current_user=Depen
 @router.get('/onboarding/{checklist_id}')
 def get_onboarding_checklist(checklist_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get specific onboarding checklist."""
-    if current_user.role not in ['hr_admin', 'project_manager']:
+    if current_user.role not in ['hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant']:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     checklist = db.query(models.OnboardingChecklist).filter(models.OnboardingChecklist.id == checklist_id).first()
@@ -386,7 +386,7 @@ def get_onboarding_checklist(checklist_id: int, db: Session = Depends(get_db), c
 @router.put('/onboarding/{checklist_id}')
 def update_onboarding_checklist(checklist_id: int, payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Update onboarding checklist items."""
-    if current_user.role not in ['hr_admin', 'project_manager']:
+    if current_user.role not in ['hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant']:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     checklist = db.query(models.OnboardingChecklist).filter(models.OnboardingChecklist.id == checklist_id).first()
@@ -415,7 +415,7 @@ def update_onboarding_checklist(checklist_id: int, payload: dict, db: Session = 
 @router.post('/onboarding/create')
 def create_onboarding_checklist(payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Create a new onboarding checklist for a new hire."""
-    if current_user.role not in ['hr_admin', 'project_manager']:
+    if current_user.role not in ['hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant']:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     # Default onboarding tasks

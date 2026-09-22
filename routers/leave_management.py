@@ -111,7 +111,7 @@ async def create_leave_type(
     db: Session = Depends(get_db)
 ):
     """Create new leave type (HR Admin only)."""
-    if current_user.role != "hr_admin":
+    if current_user.role not in ("hr_admin", "it_officer"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR Admin can create leave types"
@@ -169,7 +169,7 @@ async def submit_leave_request(
                 detail="Staff can only request leave for themselves"
             )
         
-        if current_user.role not in ["hr_admin", "project_manager"] and request.employee_id != current_user.employee_id:
+        if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"] and request.employee_id != current_user.employee_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to submit leave for other employees"
@@ -277,7 +277,7 @@ async def approve_leave_request(
     db: Session = Depends(get_db)
 ):
     """Approve or reject a leave request (Manager or HR Admin only)."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and HR Admin can approve leave"
@@ -371,7 +371,7 @@ async def get_pending_approvals(
     db: Session = Depends(get_db)
 ):
     """Get pending leave requests for approval (Manager or HR Admin only)."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and HR Admin can view pending approvals"

@@ -13,7 +13,7 @@ router = APIRouter(prefix="/recruitment", tags=["recruitment"])
 @router.post("/jobs")
 def create_job(job: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # Only HR admins and project managers can create job postings
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to create jobs")
 
     j = models.JobPosting(
@@ -77,7 +77,7 @@ def update_job(job_id: int, payload: dict, db: Session = Depends(get_db), curren
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     # Only creators or HR/manager can update
-    if current_user.role not in ("hr_admin", "project_manager") and job.created_by != current_user.id:
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant") and job.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     for field in ("title", "description", "department", "location", "closing_date", "status", "is_internal"):
@@ -103,7 +103,7 @@ def list_applications(db: Session = Depends(get_db), current_user=Depends(get_cu
 @router.post("/jobs/{job_id}/publish")
 def publish_job(job_id: int, payload: dict, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     # payload: { channels: ['linkedin','indeed'], is_internal: false }
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to publish jobs")
     job = db.query(models.JobPosting).filter(models.JobPosting.id == job_id).first()
     if not job:
@@ -136,7 +136,7 @@ def update_application_status(app_id: int, payload: dict, db: Session = Depends(
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     # Only HR or managers can update application status
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         raise HTTPException(status_code=403, detail="Insufficient permissions to update application status")
 
     app.status = payload.get('status', app.status)
@@ -184,7 +184,7 @@ def create_internship(payload: dict, db: Session = Depends(get_db), current_user
 @router.get("/internships")
 def list_internships(participant_type: str = None, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     q = db.query(models.Internship)
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         q = q.filter(models.Internship.email == current_user.email)
     if participant_type in ("intern", "volunteer"):
         q = q.filter(models.Internship.participant_type == participant_type)
@@ -196,7 +196,7 @@ def list_internships(participant_type: str = None, db: Session = Depends(get_db)
 def internships_summary(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Counts of interns vs volunteers for the Internships hub."""
     base = db.query(models.Internship)
-    if current_user.role not in ("hr_admin", "project_manager"):
+    if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
         base = base.filter(models.Internship.email == current_user.email)
     return {
         "interns": base.filter(models.Internship.participant_type == "intern").count(),

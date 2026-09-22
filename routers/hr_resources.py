@@ -38,7 +38,7 @@ FOLDERS = {
 BRAND_UPLOAD_DIR = os.path.join(BASE, "uploads", "company")
 os.makedirs(BRAND_UPLOAD_DIR, exist_ok=True)
 
-ALLOWED_ROLES = ("hr_admin", "project_manager", "finance", "staff")
+ALLOWED_ROLES = ("hr_admin", "project_manager", "finance", "staff", "it_officer", "ceo", "ceo_assistant")
 ALLOWED_IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
 # Organisation names that mean "no branding configured" (default TPO templates).
 _DEFAULT_ORG_NAMES = {"", "tpo uganda", "tpo", "people plus", "peoplepluse", "people plus uganda"}
@@ -69,7 +69,7 @@ def _is_default_org(name):
 @router.get("/")
 def list_resources(db: Session = Depends(get_db), user=Depends(get_current_user)):
     """List every downloadable HR file grouped by category folder."""
-    if user.role not in ("hr_admin", "project_manager", "finance", "staff"):
+    if user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "staff"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     groups = []
     for key, (folder, label) in FOLDERS.items():
@@ -93,7 +93,7 @@ def list_resources(db: Session = Depends(get_db), user=Depends(get_current_user)
 @router.get("/file")
 def download_resource(folder: str, filename: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Download one real HR file from the categorized folders."""
-    if user.role not in ("hr_admin", "project_manager", "finance", "staff"):
+    if user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant", "finance", "staff"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     if folder not in FOLDERS:
         raise HTTPException(status_code=404, detail="Folder not found")
@@ -259,7 +259,7 @@ def get_company_profile(db: Session = Depends(get_db), user=Depends(get_current_
 @router.put("/company")
 def update_company_profile(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Admin-only settings for company name, motto, logo/header URLs and contacts."""
-    if user.role not in ("hr_admin",):
+    if user.role not in ("hr_admin", "it_officer",):
         raise HTTPException(status_code=403, detail="Only HR Admin can update company profile")
     profile = _company_profile(db)
     for field in ("company_name", "motto", "logo_url", "header_url", "contact_email", "contact_phone", "address", "country"):
@@ -304,7 +304,7 @@ def _save_brand_image(kind: str, file: UploadFile) -> str:
 @router.post("/company/logo")
 def upload_company_logo(file: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Upload the company logo shown on generated documents."""
-    if user.role not in ("hr_admin",):
+    if user.role not in ("hr_admin", "it_officer",):
         raise HTTPException(status_code=403, detail="Only HR Admin can upload the company logo")
     url = _save_brand_image("logo", file)
     profile = _company_profile(db)
@@ -317,7 +317,7 @@ def upload_company_logo(file: UploadFile = File(...), db: Session = Depends(get_
 @router.post("/company/header")
 def upload_company_header(file: UploadFile = File(...), db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Upload the organizational letterhead / document header image."""
-    if user.role not in ("hr_admin",):
+    if user.role not in ("hr_admin", "it_officer",):
         raise HTTPException(status_code=403, detail="Only HR Admin can upload the document header")
     url = _save_brand_image("header", file)
     profile = _company_profile(db)
@@ -330,7 +330,7 @@ def upload_company_header(file: UploadFile = File(...), db: Session = Depends(ge
 @router.delete("/company/brand")
 def reset_company_brand(which: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
     """Remove the uploaded logo / header image ('logo' or 'header')."""
-    if user.role not in ("hr_admin",):
+    if user.role not in ("hr_admin", "it_officer",):
         raise HTTPException(status_code=403, detail="Only HR Admin can manage brand assets")
     if which not in ("logo", "header"):
         raise HTTPException(status_code=400, detail="which must be 'logo' or 'header'")

@@ -16,7 +16,7 @@ def google_auth(payload: dict, db: Session = Depends(get_db), current_user=Depen
     """Stub for Google OAuth authorization. In production, redirect to Google consent screen and store access token."""
     # payload: { code: 'auth_code_from_google' }
     # TODO: Exchange code for access token; store in database
-    if current_user.role != 'hr_admin':
+    if current_user.role not in ('hr_admin', 'it_officer'):
         raise HTTPException(status_code=403, detail='Only HR Admin may configure calendar integrations')
 
     return {'status': 'stub', 'message': 'Google OAuth integration placeholder. Configure CLIENT_ID, CLIENT_SECRET, and redirect_uri.'}
@@ -26,7 +26,7 @@ def microsoft_auth(payload: dict, db: Session = Depends(get_db), current_user=De
     """Stub for Microsoft OAuth authorization."""
     # payload: { code: 'auth_code_from_microsoft' }
     # TODO: Exchange code for access token; store in database
-    if current_user.role != 'hr_admin':
+    if current_user.role not in ('hr_admin', 'it_officer'):
         raise HTTPException(status_code=403, detail='Only HR Admin may configure calendar integrations')
 
     return {'status': 'stub', 'message': 'Microsoft OAuth integration placeholder. Configure CLIENT_ID, CLIENT_SECRET, and redirect_uri.'}
@@ -37,7 +37,7 @@ def create_calendar_event(payload: dict, db: Session = Depends(get_db), current_
     # payload: { title, description, start_time (ISO), end_time (ISO), attendees: [email], provider: 'google' or 'microsoft' }
     provider = payload.get('provider', 'google')
     
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to create calendar events')
 
     # TODO: Call appropriate calendar API (Google Calendar or Microsoft Graph)
@@ -74,7 +74,7 @@ def send_calendar_invite(payload: dict, db: Session = Depends(get_db), current_u
         message=f"Calendar invite sent to {', '.join(attendees)} for {subject} at {start_time}",
         type='calendar_invite'
     )
-    if current_user.role not in ('hr_admin', 'project_manager'):
+    if current_user.role not in ('hr_admin', 'it_officer', 'project_manager', 'ceo', 'ceo_assistant'):
         raise HTTPException(status_code=403, detail='Insufficient permissions to send calendar invites')
 
     db.add(notification)

@@ -67,7 +67,7 @@ def list_leave_requests(employee_id: int | None = None, db: Session = Depends(ge
         query = query.filter(models.LeaveRequest.employee_id == employee_id)
     else:
         # No employee_id provided: only HR/Managers can view all
-        if current_user.role not in ("hr_admin", "project_manager"):
+        if current_user.role not in ("hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"):
             # Return only current user's requests
             query = query.filter(models.LeaveRequest.employee_id == current_user.employee_id)
 
@@ -90,7 +90,7 @@ def list_leave_requests(employee_id: int | None = None, db: Session = Depends(ge
 
 @router.put("/approve/{request_id}")
 def approve_leave(request_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == request_id).first()
     if not leave:
@@ -102,7 +102,7 @@ def approve_leave(request_id: int, db: Session = Depends(get_db), current_user=D
 
 @router.put("/reject/{request_id}")
 def reject_leave(request_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     leave = db.query(models.LeaveRequest).filter(models.LeaveRequest.id == request_id).first()
     if not leave:
@@ -170,7 +170,7 @@ def get_team_leave_calendar(db: Session = Depends(get_db), current_user=Depends(
 @router.get("/pending")
 def get_pending_leave_approvals(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get pending leave requests (for HR or managers to approve)."""
-    if current_user.role not in ["hr_admin", "project_manager"]:
+    if current_user.role not in ["hr_admin", "it_officer", "project_manager", "ceo", "ceo_assistant"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     pending = db.query(models.LeaveRequest).filter(
