@@ -45,6 +45,9 @@ def _ensure_columns():
         ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
         ("company_settings", "motto", "VARCHAR"),
         ("company_settings", "header_url", "VARCHAR"),
+        ("onboarding_checklists", "candidate_name", "VARCHAR"),
+        ("onboarding_checklists", "status", "VARCHAR(16) DEFAULT 'Active'"),
+        ("onboarding_checklists", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
     ]
     with engine.connect() as conn:
         for table, col, ddl in stmts:

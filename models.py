@@ -482,9 +482,12 @@ class OnboardingChecklist(Base):
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
     application_id = Column(Integer, ForeignKey("applications.id"), nullable=True)
+    candidate_name = Column(String, nullable=True)
+    status = Column(String, default="Active")
     items_json = Column(Text, nullable=True)
     completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
 
 
 class AuditLog(Base):
