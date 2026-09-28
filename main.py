@@ -27,6 +27,7 @@ from routers import leave_management, employee_documents, document_management, p
 from routers import form_documents as form_documents_router
 from routers import smart_alerts, hr_resources, signatures, medical_insurance
 from routers import subscriptions
+from routers import events
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -569,7 +570,7 @@ try:
 except Exception as e:
     print(f"Schema initialization warning: {e}")
 
-app = FastAPI(title="PEOPLE PLUSE API")
+app = FastAPI(title="PEOPLE PULSE API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -600,11 +601,12 @@ app.include_router(hr_resources.router)
 app.include_router(signatures.router)
 app.include_router(medical_insurance.router)
 app.include_router(subscriptions.router)
+app.include_router(events.router)
 
 @app.get("/health")
 @app.get("/api/health")
 def root():
-    return {"message": "PEOPLE PLUSE API running", "status": "ok"}
+    return {"message": "PEOPLE PULSE API running", "status": "ok"}
 
 @app.get("/api/debug/schema")
 def debug_schema(db: Session = Depends(get_db)):

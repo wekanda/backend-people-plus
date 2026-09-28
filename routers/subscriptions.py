@@ -19,6 +19,12 @@ router = APIRouter(prefix="/api/subscription", tags=["subscription"])
 VIEW_ROLES = ("hr_admin", "project_manager", "finance", "staff", "it_officer", "ceo", "ceo_assistant")
 MANAGE_ROLES = ("hr_admin", "it_officer")
 
+# Published plan prices (shown ahead of payment activation).
+PLAN_PRICES = {
+    "quarterly": 150000,   # UGX every 3 months
+    "yearly": 3000000,     # UGX every 12 months
+}
+
 
 def _get_or_create(db: Session):
     sub = db.query(models.Subscription).order_by(models.Subscription.id.desc()).first()
@@ -26,6 +32,7 @@ def _get_or_create(db: Session):
         sub = models.Subscription(
             plan="yearly",
             status="inactive",
+            amount=PLAN_PRICES["yearly"],
             currency="UGX",
             notes="Payments & subscriptions will be activated once the app is fully built.",
         )
@@ -42,6 +49,7 @@ def _public(sub: models.Subscription):
         "status": sub.status,
         "amount": sub.amount,
         "currency": sub.currency,
+        "prices": PLAN_PRICES,
         "start_date": sub.start_date.isoformat() if sub.start_date else None,
         "end_date": sub.end_date.isoformat() if sub.end_date else None,
         "trial_end_date": sub.trial_end_date.isoformat() if sub.trial_end_date else None,
@@ -75,6 +83,9 @@ def update_subscription(payload: dict, db: Session = Depends(get_db), current_us
     for field in ("plan", "status", "amount", "currency", "auto_renew", "notes"):
         if field in payload:
             setattr(sub, field, payload[field])
+    # Apply the published price for the chosen plan unless explicitly overridden.
+    if payload.get("plan") in PLAN_PRICES and "amount" not in payload:
+        sub.amount = PLAN_PRICES[payload["plan"]]
     for field in ("start_date", "end_date", "trial_end_date"):
         if field in payload and payload[field]:
             try:
@@ -103,6 +114,7 @@ def simulate_plan(payload: dict, db: Session = Depends(get_db), current_user=Dep
     today = date.today()
     sub.plan = plan
     sub.status = "trial"
+    sub.amount = PLAN_PRICES[plan]
     sub.start_date = today
     sub.end_date = today + timedelta(days=30 * months)
     sub.trial_end_date = today + timedelta(days=14)

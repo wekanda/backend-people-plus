@@ -21,6 +21,25 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 def read_users_me(current_user: models.User = Depends(get_current_user)):
     return {"id": current_user.id, "email": current_user.email, "full_name": current_user.full_name, "role": current_user.role, "employee_id": current_user.employee_id}
 
+
+@router.put("/me")
+def update_my_profile(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Let users update their own full name and work email (real company emails)."""
+    if "email" in payload:
+        new_email = str(payload.get("email") or "").strip().lower()
+        if not new_email or "@" not in new_email:
+            raise HTTPException(status_code=400, detail="Please provide a valid email address")
+        existing = db.query(models.User).filter(models.User.email == new_email, models.User.id != current_user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="That email is already in use")
+        current_user.email = new_email
+    if payload.get("full_name"):
+        current_user.full_name = str(payload["full_name"]).strip()
+    db.commit()
+    db.refresh(current_user)
+    return {"id": current_user.id, "email": current_user.email, "full_name": current_user.full_name,
+            "role": current_user.role, "employee_id": current_user.employee_id}
+
 @router.post("/register")
 def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     # Check if user exists

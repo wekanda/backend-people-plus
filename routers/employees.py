@@ -157,6 +157,7 @@ def get_my_profile(db: Session = Depends(get_db), current_user=Depends(get_curre
         raise HTTPException(status_code=404, detail="Employee profile not found")
     return employee
 
+@router.get("")
 @router.get("/", response_model=List[EmployeeResponse])
 def list_employees(skip: int = 0, limit: int = 100, status: str = None, project: str = None, personal_email: str = None,
                    db: Session = Depends(get_db), current_user=Depends(get_current_user)):
@@ -247,6 +248,41 @@ async def upload_employee_photo(employee_id: int, file: UploadFile = File(...), 
     db.commit()
     db.refresh(employee)
     return {"message": "Profile photo uploaded", "photo_url": employee.photo_url}
+
+@router.post("/{employee_id}/photos/{kind}")
+async def upload_employee_photo_kind(employee_id: int, kind: str, file: UploadFile = File(...),
+                                     db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Upload a passport or full-length photo ('passport' | 'full') for an employee.
+
+    Matches the My Profile uploader so every staff member can put their face on file.
+    """
+    if kind not in ("passport", "full"):
+        raise HTTPException(status_code=400, detail="kind must be 'passport' or 'full'")
+    if not check_employee_access(current_user, employee_id, db):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    upload_dir = Path("uploads/profile_pictures")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    extension = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
+    filename = f"{employee_id}_{kind}_{uuid4().hex}{extension}"
+    destination = upload_dir / filename
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image is too large (max 10 MB)")
+    destination.write_bytes(contents)
+
+    url = f"/uploads/profile_pictures/{filename}"
+    if kind == "passport":
+        employee.passport_photo_url = url
+    else:
+        employee.full_photo_url = url
+    db.commit()
+    db.refresh(employee)
+    return {f"{kind}_photo_url": url}
 
 @router.delete("/{employee_id}")
 @require_role("hr_admin")

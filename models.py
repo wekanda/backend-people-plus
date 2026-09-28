@@ -466,6 +466,21 @@ class Subscription(Base):
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
+class CalendarEvent(Base):
+    """Shared organization calendar - meetings, interviews, trainings, check-ins."""
+    __tablename__ = "calendar_events"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    event_type = Column(String, default="meeting")   # meeting | interview | training | checkin | leave | other
+    description = Column(Text, nullable=True)
+    meeting_link = Column(String, nullable=True)
+    start_at = Column(DateTime, nullable=False)
+    end_at = Column(DateTime, nullable=True)
+    location = Column(String, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
 
 class BackgroundCheck(Base):
     __tablename__ = "background_checks"
