@@ -14,7 +14,8 @@ sys.modules['auth'] = auth
 sys.modules['auth_router'] = auth_router
 sys.modules['schemas'] = schemas
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from routers import form_documents as form_documents_router
 from routers import smart_alerts, hr_resources, signatures, medical_insurance
 from routers import subscriptions
 from routers import events
+from routers import interviews
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -602,6 +604,7 @@ app.include_router(signatures.router)
 app.include_router(medical_insurance.router)
 app.include_router(subscriptions.router)
 app.include_router(events.router)
+app.include_router(interviews.router)
 
 @app.get("/health")
 @app.get("/api/health")
@@ -626,6 +629,17 @@ def debug_schema(db: Session = Depends(get_db)):
     except Exception as e:
         return {"error": str(e)}
 
+def _next_occurrence(ref: date, target: date) -> int:
+    """Days until the next annual occurrence of target from ref."""
+    try:
+        nxt = ref.replace(month=target.month, day=target.day)
+    except ValueError:
+        nxt = ref.replace(month=2, day=28)
+    if nxt < ref:
+        nxt = nxt.replace(year=ref.year + 1)
+    return (nxt - ref).days
+
+
 def _dashboard_extended(db: Session, today):
     """Compute the expanded People Plus Dashboard analytics:
 
@@ -634,6 +648,27 @@ def _dashboard_extended(db: Session, today):
     """
     employees = db.query(models.Employee).all()
     total = len(employees)
+
+    # ---- Birthday feed (today + next two weeks) ----
+    birthday_entries = []
+    for e in employees:
+        if e.date_of_birth:
+            d = _next_occurrence(today, e.date_of_birth)
+            if d <= 14:
+                birthday_entries.append({
+                    "id": e.id,
+                    "full_name": e.full_name,
+                    "position": e.position,
+                    "photo_url": e.photo_url,
+                    "days_until": d,
+                    "date_of_birth": e.date_of_birth.isoformat(),
+                })
+    birthdays_today = [b for b in birthday_entries if b["days_until"] == 0]
+    upcoming_birthdays = sorted([b for b in birthday_entries if 0 < b["days_until"] <= 14], key=lambda x: x["days_until"])
+    birthday_message = (
+        f"{len(birthdays_today)} birthday(s) today and {len(upcoming_birthdays)} in the next two weeks."
+        if birthday_entries else "No birthdays in the next two weeks."
+    )
 
     def _status_count(pred):
         return sum(1 for e in employees if pred(e.status))
@@ -785,6 +820,9 @@ def _dashboard_extended(db: Session, today):
             "retirement": retirement,
             "registration": registration,
         },
+        "birthdays_today": birthdays_today,
+        "upcoming_birthdays": upcoming_birthdays,
+        "birthday_message": birthday_message,
     }
 
 @app.get("/api/dashboard")
@@ -874,6 +912,26 @@ except Exception as e:
     print(f"Warning: Could not mount uploads dir: {e}")
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
+index_html = os.path.join(static_dir, "index.html")
+
+# SPA fallback: serve the built index.html for client-side routes (deep links/refresh),
+# while still serving real files (assets, career.html, uploads) and 404ing API paths.
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa_fallback(full_path: str):
+    if full_path:
+        first = full_path.split("/")[0].lower()
+        if (first in ("api", "auth", "uploads", "docs", "redoc") or full_path.startswith("openapi.json")
+                or full_path.startswith("hr/") or full_path.startswith("ats/") or full_path.startswith("recruitment/")
+                or full_path.startswith("reporting/")):
+            raise HTTPException(status_code=404, detail="Not Found")
+        base = os.path.join(static_dir, full_path.replace("/", os.sep))
+        if os.path.isfile(base):
+            return FileResponse(base)
+    if os.path.isfile(index_html):
+        return FileResponse(index_html)
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
 try:
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 except Exception as e:
