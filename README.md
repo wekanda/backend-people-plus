@@ -308,7 +308,7 @@ POST /ats/applications/{app_id}/invite
   "start_dt": "2026-06-20T14:00:00",
   "end_dt": "2026-06-20T15:00:00",
   "location": "Conference Room A",
-  "summary": "Interview: John Doe",
+  "summary": "Interview: Moses Kintu",
   "panel": ["hr@company.com", "manager@company.com"]
 }
 ```

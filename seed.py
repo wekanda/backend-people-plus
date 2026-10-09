@@ -66,7 +66,7 @@ for user_data in test_users:
 test_employees = [
     {
         "file_code": "TPO/001",
-        "full_name": "John Kamau",
+        "full_name": "Isaac Mugisha",
         "project": "HEAD OFFICE",
         "status": "Active",
         "position": "HR Manager",
@@ -80,7 +80,7 @@ test_employees = [
     },
     {
         "file_code": "TPO/002",
-        "full_name": "Jane Mwangi",
+        "full_name": "Stella Nansubuga",
         "project": "USAID-KCHS",
         "status": "Active",
         "position": "Project Coordinator",
@@ -94,7 +94,7 @@ test_employees = [
     },
     {
         "file_code": "TPO/003",
-        "full_name": "Peter Otieno",
+        "full_name": "Emmanuel Byaruhanga",
         "project": "DCA-ADI",
         "status": "Active",
         "position": "Finance Officer",
@@ -108,7 +108,7 @@ test_employees = [
     },
     {
         "file_code": "TPO/004",
-        "full_name": "Grace Kipchoge",
+        "full_name": "Grace Tumusiime",
         "project": "UNHCR",
         "status": "Active",
         "position": "Operations Officer",
