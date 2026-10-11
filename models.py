@@ -554,3 +554,97 @@ class MedicalInsuranceBeneficiary(Base):
     approved_at = Column(DateTime, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=utcnow)
+
+
+class ProcurementRequest(Base):
+    __tablename__ = "procurement_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    request_number = Column(String, unique=True, index=True)
+    department = Column(String, nullable=False)
+    item_description = Column(Text, nullable=False)
+    quantity = Column(Integer, default=1)
+    estimated_amount = Column(Float, default=0)
+    supplier = Column(String, nullable=True)
+    awarded_amount = Column(Float, default=0)
+    stage = Column(String, default="purchase_request", index=True)
+    date_requested = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+    requested_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class ProcurementStageEvent(Base):
+    __tablename__ = "procurement_stage_events"
+    id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(Integer, ForeignKey("procurement_requests.id"), index=True)
+    from_stage = Column(String, nullable=True)
+    to_stage = Column(String, nullable=False)
+    reference = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
+class AssetRecord(Base):
+    __tablename__ = "asset_records"
+    id = Column(Integer, primary_key=True, index=True)
+    tag_number = Column(String, unique=True, index=True)
+    acquisition_date = Column(Date, nullable=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    serial_number = Column(String, nullable=False, index=True)
+    accessories = Column(Text, nullable=True)
+    acquisition_type = Column(String, default="Purchase")
+    department = Column(String, nullable=False)
+    custodian = Column(String, nullable=True)
+    received_by = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    condition = Column(String, default="Good")
+    utilization_status = Column(String, default="In use")
+    asset_status = Column(String, default="Active")
+    last_count_date = Column(Date, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class FinanceRegisterEntry(Base):
+    __tablename__ = "finance_register_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String, index=True, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    department = Column(String, nullable=True)
+    period = Column(String, nullable=True)
+    direction = Column(String, nullable=True)
+    amount = Column(Float, default=0)
+    committed_amount = Column(Float, default=0)
+    actual_amount = Column(Float, default=0)
+    status = Column(String, default="Open", index=True)
+    due_date = Column(Date, nullable=True)
+    owner = Column(String, nullable=True)
+    evidence_reference = Column(String, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class PAYEComplianceRecord(Base):
+    __tablename__ = "paye_compliance_records"
+    id = Column(Integer, primary_key=True, index=True)
+    period = Column(String, unique=True, index=True, nullable=False)
+    due_date = Column(Date, nullable=True)
+    paye_amount = Column(Float, default=0)
+    salary_deductions_processed = Column(Boolean, default=False)
+    monthly_return_filed = Column(Boolean, default=False)
+    return_filed_date = Column(Date, nullable=True)
+    remitted = Column(Boolean, default=False)
+    remittance_date = Column(Date, nullable=True)
+    penalty_amount = Column(Float, default=0)
+    interest_amount = Column(Float, default=0)
+    audit_status = Column(String, default="Not scheduled")
+    notes = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)

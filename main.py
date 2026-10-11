@@ -30,6 +30,7 @@ from routers import smart_alerts, hr_resources, signatures, medical_insurance
 from routers import subscriptions
 from routers import events
 from routers import interviews
+from routers import procurement, assets, finance_operations
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -605,6 +606,9 @@ app.include_router(medical_insurance.router)
 app.include_router(subscriptions.router)
 app.include_router(events.router)
 app.include_router(interviews.router)
+app.include_router(procurement.router)
+app.include_router(assets.router)
+app.include_router(finance_operations.router)
 
 @app.get("/health")
 @app.get("/api/health")
