@@ -81,6 +81,7 @@ class EmployeeResponse(BaseModel):
     contact_number: str | None = None
     location: str | None = None
     photo_url: str | None = None
+    passport_photo_url: str | None = None
     employment_type: str | None = None
     contract_end: date | None = None
     national_id_number: str | None = None
