@@ -50,6 +50,70 @@ class Employee(Base):
     full_photo_url = Column(String, nullable=True)
     unit = Column(String, nullable=True)
 
+    # ===== People Pulse Unified Master Specification datapoints =====
+    # Identifiers
+    staff_number = Column(String, nullable=True, index=True)
+    national_id_number = Column(String, nullable=True)          # NIN
+    passport_number = Column(String, nullable=True)
+    tin = Column(String, nullable=True)                          # Tax Identification Number
+    nssf_number = Column(String, nullable=True)                  # Social security / NSSF No.
+
+    # Personal
+    nationality = Column(String, nullable=True)
+    marital_status = Column(String, nullable=True)
+    personal_email = Column(String, nullable=True, index=True)
+    address = Column(String, nullable=True)
+    district = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    country = Column(String, nullable=True)
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
+    emergency_contact_relationship = Column(String, nullable=True)
+    next_of_kin = Column(String, nullable=True)
+    next_of_kin_relationship = Column(String, nullable=True)
+    next_of_kin_contact = Column(String, nullable=True)
+    spouse_name = Column(String, nullable=True)
+    dependants_json = Column(Text, nullable=True)                # JSON list of dependant records
+
+    # Organization structure
+    department = Column(String, nullable=True, index=True)
+    branch = Column(String, nullable=True)
+    region = Column(String, nullable=True)
+    duty_station = Column(String, nullable=True)
+    grade = Column(String, nullable=True)                        # salary grade
+    supervisor = Column(String, nullable=True)
+    supervisor_employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    cost_center = Column(String, nullable=True)
+    budget_line = Column(String, nullable=True)
+    funding_source = Column(String, nullable=True)
+
+    # Employment lifecycle
+    date_joined = Column(Date, nullable=True)
+    confirmation_date = Column(Date, nullable=True)
+    retirement_date = Column(Date, nullable=True)
+
+    # Contract
+    contract_type = Column(String, nullable=True)
+    probation_start = Column(Date, nullable=True)
+
+    # Professional
+    professional_qualifications = Column(Text, nullable=True)
+    licenses = Column(Text, nullable=True)
+    certifications = Column(Text, nullable=True)
+    skills = Column(Text, nullable=True)
+    experience_years = Column(Integer, nullable=True)
+    training_history = Column(Text, nullable=True)
+
+    # Bank / payroll
+    bank_name = Column(String, nullable=True)
+    bank_account_number = Column(String, nullable=True)
+    bank_branch = Column(String, nullable=True)
+    bank_sort_code = Column(String, nullable=True)
+    salary_grade = Column(String, nullable=True)
+    basic_salary = Column(Float, nullable=True)
+    gross_salary = Column(Float, nullable=True)
+    benefits = Column(Text, nullable=True)                        # JSON list of benefits/allowances
+
     leave_requests = relationship("LeaveRequest", back_populates="employee")
     timesheets = relationship("Timesheet", back_populates="employee")
     appraisals = relationship("PerformanceAppraisal", back_populates="employee")
@@ -525,6 +589,53 @@ class UserSignature(Base):
     uploaded_at = Column(DateTime, default=utcnow)
 
 
+class EmployeeSignature(Base):
+    """Employee-owned signature image with verification and replacement history."""
+    __tablename__ = "employee_signatures"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), index=True, nullable=False)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    signature_type = Column(String, nullable=False, default="primary")
+    file_path = Column(String, nullable=False)
+    file_name = Column(String, nullable=False)
+    uploaded_at = Column(DateTime, default=utcnow, nullable=False)
+    status = Column(String, default="Pending Verification", nullable=False)
+    verified_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    replaces_signature_id = Column(Integer, ForeignKey("employee_signatures.id"), nullable=True)
+    replaced_by_id = Column(Integer, ForeignKey("employee_signatures.id"), nullable=True)
+    archived_at = Column(DateTime, nullable=True)
+
+
+class SignatureAudit(Base):
+    """Immutable audit events for signature lifecycle and document usage."""
+    __tablename__ = "signature_audits"
+    id = Column(Integer, primary_key=True, index=True)
+    signature_id = Column(Integer, ForeignKey("employee_signatures.id"), index=True, nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), index=True, nullable=False)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action = Column(String, nullable=False)
+    document_type = Column(String, nullable=True)
+    document_id = Column(String, nullable=True)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+
+class DepartmentStamp(Base):
+    """Configured digital stamp identity for an organizational department."""
+    __tablename__ = "department_stamps"
+    id = Column(Integer, primary_key=True, index=True)
+    department = Column(String, nullable=False, index=True)
+    department_code = Column(String, nullable=True)
+    organization_name = Column(String, default="PEOPLE PULSE HRIS")
+    approval_text = Column(String, nullable=True)
+    organization_logo_url = Column(String, nullable=True)
+    stamp_url = Column(String, nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    uploaded_at = Column(DateTime, default=utcnow)
+
+
 class HRStamp(Base):
     """Official electronic HR / People & Culture stamp for authenticating documents."""
     __tablename__ = "hr_stamps"
@@ -604,6 +715,17 @@ class AssetRecord(Base):
     utilization_status = Column(String, default="In use")
     asset_status = Column(String, default="Active")
     last_count_date = Column(Date, nullable=True)
+    # ===== People Pulse Unified Master Specification datapoints =====
+    category = Column(String, nullable=True, index=True)
+    cost = Column(Float, nullable=True)
+    supplier_name = Column(String, nullable=True)
+    purchase_order_reference = Column(String, nullable=True)
+    useful_life_years = Column(Integer, nullable=True)
+    salvage_value = Column(Float, nullable=True)
+    depreciation_method = Column(String, nullable=True)      # Straight line | Reducing balance | None
+    accumulated_depreciation = Column(Float, default=0.0)
+    warranty_expiry = Column(Date, nullable=True)
+    insurance_details = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
@@ -644,6 +766,105 @@ class PAYEComplianceRecord(Base):
     penalty_amount = Column(Float, default=0)
     interest_amount = Column(Float, default=0)
     audit_status = Column(String, default="Not scheduled")
+    notes = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class SpecificationRecord(Base):
+    __tablename__ = "specification_records"
+    id = Column(Integer, primary_key=True, index=True)
+    form_key = Column(String, index=True, nullable=False)
+    form_title = Column(String, nullable=False)
+    module = Column(String, index=True, nullable=False)
+    reference = Column(String, index=True, nullable=True)
+    status = Column(String, index=True, default="Draft")
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True, index=True)
+    values_json = Column(Text, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_deleted = Column(Boolean, default=False, index=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class SpecificationRecordHistory(Base):
+    __tablename__ = "specification_record_history"
+    id = Column(Integer, primary_key=True, index=True)
+    record_id = Column(Integer, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    action = Column(String, nullable=False)
+    previous_values_json = Column(Text, nullable=True)
+    current_values_json = Column(Text, nullable=True)
+    changed_fields_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
+# ==================== COMMON MASTER DATA MODEL ====================
+# Organization / branch / region structure (spec: Shared Master Data)
+
+class Organization(Base):
+    """Organization / entity master record."""
+    __tablename__ = "organizations"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    org_type = Column(String, nullable=True)       # Company | NGO | Government | School | Hospital | ...
+    registration_number = Column(String, nullable=True)
+    tin = Column(String, nullable=True)
+    country = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    website = Column(String, nullable=True)
+    currency = Column(String, default="UGX")
+    financial_year_start = Column(String, nullable=True)   # e.g. "July" or "01-07-2026"
+    branches_json = Column(Text, nullable=True)            # JSON list of branch/location records
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class Department(Base):
+    """Department / unit master record linked to the organization structure."""
+    __tablename__ = "departments"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    code = Column(String, nullable=True, index=True)
+    branch = Column(String, nullable=True)                 # branch / location
+    region = Column(String, nullable=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    cost_center = Column(String, nullable=True)
+    budget_line = Column(String, nullable=True)
+    parent_department = Column(String, nullable=True)      # optional parent unit
+    description = Column(Text, nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+
+
+class Vendor(Base):
+    """Vendor / supplier master record."""
+    __tablename__ = "vendors"
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_code = Column(String, unique=True, index=True)
+    vendor_name = Column(String, nullable=False, index=True)
+    category = Column(String, nullable=True)               # Goods | Services | Works | Consumables | ...
+    tin = Column(String, nullable=True)
+    registration_number = Column(String, nullable=True)
+    bank_name = Column(String, nullable=True)
+    bank_account_number = Column(String, nullable=True)
+    bank_branch = Column(String, nullable=True)
+    sort_code = Column(String, nullable=True)
+    contact_name = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    contact_email = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    country = Column(String, default="Uganda")
+    compliance_documents = Column(Text, nullable=True)      # JSON list of compliance document names/urls
+    performance_rating = Column(Float, nullable=True)       # 0-5 rating from procurement
+    status = Column(String, default="Active", index=True)   # Active | Suspended | Inactive | Blacklisted
     notes = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=utcnow)

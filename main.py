@@ -30,7 +30,8 @@ from routers import smart_alerts, hr_resources, signatures, medical_insurance
 from routers import subscriptions
 from routers import events
 from routers import interviews
-from routers import procurement, assets, finance_operations
+from routers import procurement, assets, finance_operations, specification_records
+from routers import vendors, organization
 from auth_router import router as auth_router
 from auth import get_current_user, get_password_hash, verify_password
 
@@ -45,6 +46,67 @@ def _ensure_columns():
         ("employees", "passport_photo_url", "VARCHAR"),
         ("employees", "full_photo_url", "VARCHAR"),
         ("employees", "unit", "VARCHAR"),
+        # ---- People Pulse Unified Master Specification employee datapoints ----
+        ("employees", "staff_number", "VARCHAR"),
+        ("employees", "national_id_number", "VARCHAR"),
+        ("employees", "passport_number", "VARCHAR"),
+        ("employees", "tin", "VARCHAR"),
+        ("employees", "nssf_number", "VARCHAR"),
+        ("employees", "nationality", "VARCHAR"),
+        ("employees", "marital_status", "VARCHAR"),
+        ("employees", "personal_email", "VARCHAR"),
+        ("employees", "address", "VARCHAR"),
+        ("employees", "district", "VARCHAR"),
+        ("employees", "city", "VARCHAR"),
+        ("employees", "country", "VARCHAR"),
+        ("employees", "emergency_contact_name", "VARCHAR"),
+        ("employees", "emergency_contact_phone", "VARCHAR"),
+        ("employees", "emergency_contact_relationship", "VARCHAR"),
+        ("employees", "next_of_kin", "VARCHAR"),
+        ("employees", "next_of_kin_relationship", "VARCHAR"),
+        ("employees", "next_of_kin_contact", "VARCHAR"),
+        ("employees", "spouse_name", "VARCHAR"),
+        ("employees", "dependants_json", "TEXT"),
+        ("employees", "department", "VARCHAR"),
+        ("employees", "branch", "VARCHAR"),
+        ("employees", "region", "VARCHAR"),
+        ("employees", "duty_station", "VARCHAR"),
+        ("employees", "grade", "VARCHAR"),
+        ("employees", "supervisor", "VARCHAR"),
+        ("employees", "supervisor_employee_id", "INTEGER"),
+        ("employees", "cost_center", "VARCHAR"),
+        ("employees", "budget_line", "VARCHAR"),
+        ("employees", "funding_source", "VARCHAR"),
+        ("employees", "date_joined", "DATE"),
+        ("employees", "confirmation_date", "DATE"),
+        ("employees", "retirement_date", "DATE"),
+        ("employees", "contract_type", "VARCHAR"),
+        ("employees", "probation_start", "DATE"),
+        ("employees", "professional_qualifications", "TEXT"),
+        ("employees", "licenses", "TEXT"),
+        ("employees", "certifications", "TEXT"),
+        ("employees", "skills", "TEXT"),
+        ("employees", "experience_years", "INTEGER"),
+        ("employees", "training_history", "TEXT"),
+        ("employees", "bank_name", "VARCHAR"),
+        ("employees", "bank_account_number", "VARCHAR"),
+        ("employees", "bank_branch", "VARCHAR"),
+        ("employees", "bank_sort_code", "VARCHAR"),
+        ("employees", "salary_grade", "VARCHAR"),
+        ("employees", "basic_salary", "FLOAT"),
+        ("employees", "gross_salary", "FLOAT"),
+        ("employees", "benefits", "TEXT"),
+        # ---- Asset master datapoints (spec) ----
+        ("asset_records", "category", "VARCHAR"),
+        ("asset_records", "cost", "FLOAT"),
+        ("asset_records", "supplier_name", "VARCHAR"),
+        ("asset_records", "purchase_order_reference", "VARCHAR"),
+        ("asset_records", "useful_life_years", "INTEGER"),
+        ("asset_records", "salvage_value", "FLOAT"),
+        ("asset_records", "depreciation_method", "VARCHAR"),
+        ("asset_records", "accumulated_depreciation", "FLOAT DEFAULT 0"),
+        ("asset_records", "warranty_expiry", "DATE"),
+        ("asset_records", "insurance_details", "TEXT"),
         ("performance_appraisals", "score", "FLOAT"),
         ("internships", "participant_type", "VARCHAR(32) DEFAULT 'intern'"),
         ("company_settings", "motto", "VARCHAR"),
@@ -609,6 +671,9 @@ app.include_router(interviews.router)
 app.include_router(procurement.router)
 app.include_router(assets.router)
 app.include_router(finance_operations.router)
+app.include_router(specification_records.router)
+app.include_router(vendors.router)
+app.include_router(organization.router)
 
 @app.get("/health")
 @app.get("/api/health")

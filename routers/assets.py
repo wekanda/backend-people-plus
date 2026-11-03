@@ -31,6 +31,17 @@ class AssetCreate(BaseModel):
     utilization_status: Literal["In use", "Underused", "Idle", "Under maintenance"] = "In use"
     asset_status: Literal["Active", "Retired", "Missing"] = "Active"
     last_count_date: Optional[date] = None
+    # ---- People Pulse Unified Master Specification datapoints ----
+    category: Optional[str] = None
+    cost: Optional[float] = None
+    supplier_name: Optional[str] = None
+    purchase_order_reference: Optional[str] = None
+    useful_life_years: Optional[int] = None
+    salvage_value: Optional[float] = None
+    depreciation_method: Optional[str] = None
+    accumulated_depreciation: Optional[float] = 0.0
+    warranty_expiry: Optional[date] = None
+    insurance_details: Optional[str] = None
 
 
 class AssetUpdate(BaseModel):
@@ -49,6 +60,17 @@ class AssetUpdate(BaseModel):
     utilization_status: Optional[Literal["In use", "Underused", "Idle", "Under maintenance"]] = None
     asset_status: Optional[Literal["Active", "Retired", "Missing"]] = None
     last_count_date: Optional[date] = None
+    # ---- People Pulse Unified Master Specification datapoints ----
+    category: Optional[str] = None
+    cost: Optional[float] = None
+    supplier_name: Optional[str] = None
+    purchase_order_reference: Optional[str] = None
+    useful_life_years: Optional[int] = None
+    salvage_value: Optional[float] = None
+    depreciation_method: Optional[str] = None
+    accumulated_depreciation: Optional[float] = None
+    warranty_expiry: Optional[date] = None
+    insurance_details: Optional[str] = None
 
 
 def _require_manager(user):
