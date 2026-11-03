@@ -17,7 +17,7 @@ from auth import get_current_user, check_employee_access
 
 router = APIRouter(prefix="/api", tags=["signatures & stamps"])
 
-UPLOAD_ROOT = Path("uploads")
+UPLOAD_ROOT = Path(__file__).resolve().parents[1] / "uploads"
 
 
 def _save_upload(subfolder: str, employee_id: int, file: UploadFile):

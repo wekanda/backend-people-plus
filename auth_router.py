@@ -25,6 +25,10 @@ def read_users_me(current_user: models.User = Depends(get_current_user)):
 @router.put("/me")
 def update_my_profile(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Let users update their own full name and work email (real company emails)."""
+    employee = None
+    if current_user.employee_id is not None:
+        employee = db.query(models.Employee).filter(models.Employee.id == current_user.employee_id).first()
+
     if "email" in payload:
         new_email = str(payload.get("email") or "").strip().lower()
         if not new_email or "@" not in new_email:
@@ -33,8 +37,12 @@ def update_my_profile(payload: dict, db: Session = Depends(get_db), current_user
         if existing:
             raise HTTPException(status_code=400, detail="That email is already in use")
         current_user.email = new_email
+        if employee:
+            employee.personal_email = new_email
     if payload.get("full_name"):
         current_user.full_name = str(payload["full_name"]).strip()
+        if employee:
+            employee.full_name = current_user.full_name
     db.commit()
     db.refresh(current_user)
     return {"id": current_user.id, "email": current_user.email, "full_name": current_user.full_name,

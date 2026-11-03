@@ -11,6 +11,7 @@ from auth import get_current_user, check_employee_access, require_role
 from typing import List
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
+PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[1] / "uploads" / "profile_pictures"
 
 class EmployeeCreate(BaseModel):
     file_code: str
@@ -369,7 +370,7 @@ async def upload_employee_photo(employee_id: int, file: UploadFile = File(...), 
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    upload_dir = Path("uploads/profile_pictures")
+    upload_dir = PROFILE_PHOTO_DIR
     upload_dir.mkdir(parents=True, exist_ok=True)
     extension = Path(file.filename or "profile.jpg").suffix.lower() or ".jpg"
     filename = f"{employee_id}_{uuid4().hex}{extension}"
@@ -398,7 +399,7 @@ async def upload_employee_photo_kind(employee_id: int, kind: str, file: UploadFi
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    upload_dir = Path("uploads/profile_pictures")
+    upload_dir = PROFILE_PHOTO_DIR
     upload_dir.mkdir(parents=True, exist_ok=True)
     extension = Path(file.filename or "photo.jpg").suffix.lower() or ".jpg"
     filename = f"{employee_id}_{kind}_{uuid4().hex}{extension}"
